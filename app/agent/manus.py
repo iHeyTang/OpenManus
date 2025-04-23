@@ -60,18 +60,15 @@ class Manus(ReActAgent):
         current_date=datetime.now().strftime("%Y-%m-%d"),
         max_steps=20,
         current_step=0,
-        user_prompt="",
     )
     next_step_prompt: str = NEXT_STEP_PROMPT.format(
         max_steps=20,
         current_step=0,
         remaining_steps=20,
         task_dir="Not Specified",
-        user_prompt="",
     )
     plan_prompt: str = PLAN_PROMPT.format(
         max_steps=20,
-        user_prompt="",
         language="English",
         available_tools="",
     )
@@ -121,7 +118,6 @@ class Manus(ReActAgent):
             current_date=datetime.now().strftime("%Y-%m-%d"),
             max_steps=self.max_steps,
             current_step=self.current_step,
-            user_prompt=self.task_request,
         )
 
         self.next_step_prompt = NEXT_STEP_PROMPT.format(
@@ -129,7 +125,6 @@ class Manus(ReActAgent):
             current_step=self.current_step,
             remaining_steps=self.max_steps - self.current_step,
             task_dir=self.task_dir,
-            user_prompt=self.task_request,
         )
 
         self.memory.add_message(Message.system_message(self.system_prompt))
@@ -161,7 +156,6 @@ class Manus(ReActAgent):
         self.plan_prompt = PLAN_PROMPT.format(
             language=self.language or "English",
             max_steps=self.max_steps,
-            user_prompt=self.task_request,
             available_tools="\n".join(
                 [
                     f"- {tool.name}: {tool.description}"
@@ -192,7 +186,6 @@ class Manus(ReActAgent):
             current_step=self.current_step,
             remaining_steps=self.max_steps - self.current_step,
             task_dir=self.task_dir,
-            user_prompt=self.task_request,
         )
 
         browser_in_use = self._check_browser_in_use_recently()

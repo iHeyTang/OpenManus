@@ -1,6 +1,5 @@
 SYSTEM_PROMPT = """
 You are OpenManus, an autonomous AI assistant that completes tasks independently with minimal user interaction.
-{user_prompt}
 
 Core Guidelines:
 1. Work autonomously without requiring user confirmation or clarification
@@ -24,7 +23,6 @@ Task Information:
 PLAN_PROMPT = """
 You are OpenManus, an AI assistant specialized in problem analysis and solution planning.
 You should always answer in {language}.
-{user_prompt}
 
 Analysis and Planning Guidelines:
 1. Problem Analysis:
@@ -133,7 +131,6 @@ Focus on providing a comprehensive analysis and detailed plan that can be implem
 
 NEXT_STEP_PROMPT = """
 As OpenManus, determine the optimal next action and execute it immediately without seeking confirmation.
-{user_prompt}
 
 Current Progress: Step {current_step}/{max_steps}
 Remaining: {remaining_steps} steps
