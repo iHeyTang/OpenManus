@@ -447,7 +447,13 @@ class LLM:
             collected_messages = []
             completion_text = ""
             async for chunk in response:
-                chunk_message = chunk.choices[0].delta.content or ""
+                chunk_message = (
+                    chunk.choices[0].delta.content
+                    if chunk.choices
+                    and chunk.choices[0].delta
+                    and chunk.choices[0].delta.content
+                    else ""
+                )
                 collected_messages.append(chunk_message)
                 completion_text += chunk_message
                 print(chunk_message, end="", flush=True)
@@ -609,7 +615,13 @@ class LLM:
 
             collected_messages = []
             async for chunk in response:
-                chunk_message = chunk.choices[0].delta.content or ""
+                chunk_message = (
+                    chunk.choices[0].delta.content
+                    if chunk.choices
+                    and chunk.choices[0].delta
+                    and chunk.choices[0].delta.content
+                    else ""
+                )
                 collected_messages.append(chunk_message)
                 print(chunk_message, end="", flush=True)
 
