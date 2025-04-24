@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth';
 import path from 'path';
 import fs from 'fs';
 import { prisma } from '@/lib/prisma';
+import crypto from 'crypto';
 
 /**
  * This route is used to serve assets for a task.
@@ -13,7 +14,7 @@ import { prisma } from '@/lib/prisma';
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
-    const { path } = await params;
+    const { path: pathSegments } = await params;
     const cookie = request.cookies.get('token');
     if (!cookie) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const taskId = path[0];
+    const taskId = pathSegments[0];
 
     const task = await prisma.tasks.findUnique({
       where: { id: taskId, organizationId: organizationUser.organizationId },
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return new NextResponse('Task not found', { status: 404 });
     }
 
-    const filePath = `${process.env.WORKSPACE_ROOT_PATH}/${organizationUser.organizationId}/${path.join('/')}`;
+    const filePath = `${process.env.WORKSPACE_ROOT_PATH}/${organizationUser.organizationId}/${pathSegments.join('/')}`;
     if (!fs.existsSync(filePath)) {
       return new NextResponse('File not found', { status: 404 });
     }
@@ -65,13 +66,36 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json(fileDetails);
     }
 
+    // calculate ETag
     const fileBuffer = await fs.promises.readFile(filePath);
+    const etag = crypto.createHash('md5').update(fileBuffer).digest('hex');
+
+    // get last modified time
+    const lastModified = stats.mtime.toUTCString();
+
+    // check If-None-Match header
+    const ifNoneMatch = request.headers.get('if-none-match');
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return new NextResponse(null, { status: 304 });
+    }
+
+    // check If-Modified-Since header
+    const ifModifiedSince = request.headers.get('if-modified-since');
+    if (ifModifiedSince && new Date(ifModifiedSince) >= stats.mtime) {
+      return new NextResponse(null, { status: 304 });
+    }
+
     const contentType = getContentType(filePath);
+    const fileName = path.basename(filePath);
+    const encodedFileName = encodeURIComponent(fileName);
 
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000',
+        'Content-Disposition': `inline; filename*=UTF-8''${encodedFileName}`,
+        ETag: etag,
+        'Last-Modified': lastModified,
+        'Cache-Control': 'private, must-revalidate',
       },
     });
   } catch (error) {

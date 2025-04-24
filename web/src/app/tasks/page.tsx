@@ -32,7 +32,7 @@ export default function ChatPage() {
     };
   }, []);
 
-  const handleSubmit = async (input: { prompt: string; tools: string[]; files: File[] }) => {
+  const handleSubmit = async (input: { prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => {
     if (!input || isLoading) return;
 
     if (abortControllerRef.current) {
@@ -43,7 +43,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const res = await createTask({ prompt: input.prompt, tools: input.tools, files: input.files });
+      const res = await createTask({ prompt: input.prompt, tools: input.tools, files: input.files, shouldPlan: input.shouldPlan });
       if (res.error || !res.data) {
         throw new Error('Failed to create task');
       }

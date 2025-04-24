@@ -142,11 +142,15 @@ def parse_tools(tools: list[str]) -> list[Union[str, McpToolConfig]]:
 async def create_task(
     task_id: str = Form(...),
     prompt: str = Form(...),
+    should_plan: Optional[bool] = Form(False),
     tools: Optional[list[str]] = Form(None),
     preferences: Optional[str] = Form(None),
     llm_config: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None),
 ):
+    print(
+        f"Creating task {task_id} with prompt: {prompt}, should_plan: {should_plan}, tools: {tools}, preferences: {preferences}, llm_config: {llm_config}"
+    )
     # Parse preferences and llm_config from JSON strings
     preferences_dict = None
     if preferences:
@@ -173,6 +177,7 @@ async def create_task(
         Manus(
             name=AGENT_NAME,
             description="A versatile agent that can solve various tasks using multiple tools",
+            should_plan=should_plan,
             llm=(
                 LLM(config_name=task_id, llm_config=llm_config_obj)
                 if llm_config_obj
@@ -264,6 +269,7 @@ async def get_tasks():
 async def restart_task(
     task_id: str = Form(...),
     prompt: str = Form(...),
+    should_plan: Optional[bool] = Form(False),
     tools: Optional[list[str]] = Form(None),
     preferences: Optional[str] = Form(None),
     llm_config: Optional[str] = Form(None),
@@ -308,6 +314,7 @@ async def restart_task(
         Manus(
             name=AGENT_NAME,
             description="A versatile agent that can solve various tasks using multiple tools",
+            should_plan=should_plan,
             llm=(
                 LLM(config_name=task_id, llm_config=llm_config_obj)
                 if llm_config_obj

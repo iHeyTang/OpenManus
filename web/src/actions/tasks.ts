@@ -33,8 +33,14 @@ export const pageTasks = withUserAuth(async ({ organization, args }: AuthWrapper
   return { tasks, total };
 });
 
-export const createTask = withUserAuth(async ({ organization, args }: AuthWrapperContext<{ prompt: string; tools: string[]; files: File[] }>) => {
-  const { prompt, tools, files } = args;
+type CreateTaskArgs = {
+  prompt: string;
+  tools: string[];
+  files: File[];
+  shouldPlan: boolean;
+};
+export const createTask = withUserAuth(async ({ organization, args }: AuthWrapperContext<CreateTaskArgs>) => {
+  const { prompt, tools, files, shouldPlan } = args;
   const llmConfig = await prisma.llmConfigs.findFirst({
     where: {
       type: 'default',
@@ -84,6 +90,7 @@ export const createTask = withUserAuth(async ({ organization, args }: AuthWrappe
   const formData = new FormData();
   formData.append('task_id', `${organization.id}/${task.id}`);
   formData.append('prompt', prompt);
+  formData.append('should_plan', shouldPlan.toString());
   processedTools.forEach(tool => formData.append('tools', tool));
   formData.append('preferences', JSON.stringify({ language: LANGUAGE_CODES[preferences?.language as keyof typeof LANGUAGE_CODES] }));
   formData.append(
@@ -129,8 +136,8 @@ export const createTask = withUserAuth(async ({ organization, args }: AuthWrappe
 });
 
 export const restartTask = withUserAuth(
-  async ({ organization, args }: AuthWrapperContext<{ taskId: string; prompt: string; tools: string[]; files: File[] }>) => {
-    const { taskId, prompt, tools, files } = args;
+  async ({ organization, args }: AuthWrapperContext<{ taskId: string; prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }>) => {
+    const { taskId, prompt, tools, files, shouldPlan } = args;
 
     const llmConfig = await prisma.llmConfigs.findFirst({
       where: {
@@ -196,6 +203,7 @@ export const restartTask = withUserAuth(
     const formData = new FormData();
     formData.append('task_id', `${organization.id}/${task.id}`);
     formData.append('prompt', prompt);
+    formData.append('should_plan', shouldPlan.toString());
     processedTools.forEach(tool => formData.append('tools', tool));
     formData.append('preferences', JSON.stringify({ language: LANGUAGE_CODES[preferences?.language as keyof typeof LANGUAGE_CODES] }));
     formData.append(

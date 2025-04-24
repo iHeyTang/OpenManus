@@ -153,6 +153,8 @@ class Manus(ReActAgent):
     async def plan(self) -> str:
         """Create an initial plan based on the user request."""
         # Create planning message
+        self.emit(BaseAgentEvents.LIFECYCLE_PLAN_START, {})
+
         self.plan_prompt = PLAN_PROMPT.format(
             language=self.language or "English",
             max_steps=self.max_steps,
@@ -172,9 +174,8 @@ class Manus(ReActAgent):
         )
 
         # Add the planning message to memory
-        self.update_memory("user", self.task_request)
         self.update_memory("user", planning_message)
-
+        self.emit(BaseAgentEvents.LIFECYCLE_PLAN_COMPLETE, {"plan": planning_message})
         return planning_message
 
     async def think(self) -> bool:

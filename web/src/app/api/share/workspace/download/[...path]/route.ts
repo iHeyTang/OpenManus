@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import { prisma } from '@/lib/prisma';
 import archiver from 'archiver';
+import path from 'path';
 
 /**
  * This route is used to download workspace files or directories as zip archives
@@ -11,9 +12,9 @@ import archiver from 'archiver';
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
-    const { path } = await params;
+    const { path: pathSegments } = await params;
 
-    const taskId = path[0];
+    const taskId = pathSegments[0];
 
     const task = await prisma.tasks.findUnique({
       where: { id: taskId, shareExpiresAt: { gt: new Date() } },
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return new NextResponse('Task not found', { status: 404 });
     }
 
-    const filePath = `${process.env.WORKSPACE_ROOT_PATH}/${task.organizationId}/${path.join('/')}`;
+    const filePath = `${process.env.WORKSPACE_ROOT_PATH}/${task.organizationId}/${pathSegments.join('/')}`;
     if (!fs.existsSync(filePath)) {
       return new NextResponse('File not found', { status: 404 });
     }
@@ -33,19 +34,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // If it's a single file, simply return it for download
     if (!stats.isDirectory()) {
       const fileBuffer = await fs.promises.readFile(filePath);
-      const fileName = filePath.split('/').pop() || 'download';
+      const fileName = path.basename(filePath);
+      const encodedFileName = encodeURIComponent(fileName);
 
       return new NextResponse(fileBuffer, {
         headers: {
           'Content-Type': 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${fileName}"`,
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodedFileName}`,
+          'Cache-Control': 'public, max-age=31536000',
         },
       });
     }
 
     // For directories, create a zip archive
-    const directoryName = filePath.split('/').pop() || 'workspace';
+    const directoryName = path.basename(filePath);
     const zipFileName = `${directoryName}.zip`;
+    const encodedZipFileName = encodeURIComponent(zipFileName);
 
     // Create zip archive in memory
     const archive = archiver('zip', {
@@ -105,7 +109,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return new NextResponse(zipBuffer, {
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${zipFileName}"`,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedZipFileName}`,
+        'Cache-Control': 'public, max-age=31536000',
       },
     });
   } catch (error) {

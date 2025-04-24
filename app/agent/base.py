@@ -173,6 +173,10 @@ class BaseAgent(BaseModel, ABC):
     name: str = Field(..., description="Unique name of the agent")
     description: Optional[str] = Field(None, description="Optional agent description")
 
+    should_plan: bool = Field(
+        default=True, description="Whether the agent should plan before steps"
+    )
+
     # Prompts
     system_prompt: Optional[str] = Field(
         None, description="System-level instruction prompt"
@@ -325,11 +329,10 @@ class BaseAgent(BaseModel, ABC):
         self.emit(BaseAgentEvents.LIFECYCLE_PREPARE_COMPLETE, {})
         async with self.state_context(AgentState.RUNNING):
             if request:
-                self.emit(BaseAgentEvents.LIFECYCLE_PLAN_START, {})
-                plan_result = await self.plan()
-                self.emit(
-                    BaseAgentEvents.LIFECYCLE_PLAN_COMPLETE, {"plan": plan_result}
-                )
+                self.update_memory("user", request)
+                if self.should_plan:
+                    await self.plan()
+
             while (
                 self.current_step < self.max_steps and self.state != AgentState.FINISHED
             ):

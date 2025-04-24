@@ -52,10 +52,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const fileBuffer = await fs.promises.readFile(filePath);
       const fileName = filePath.split('/').pop() || 'download';
 
+      // Encode the filename for Content-Disposition header
+      const encodedFileName = encodeURIComponent(fileName);
+
       return new NextResponse(fileBuffer, {
         headers: {
           'Content-Type': 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${fileName}"`,
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodedFileName}`,
         },
       });
     }
@@ -63,6 +66,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // For directories, create a zip archive
     const directoryName = filePath.split('/').pop() || 'workspace';
     const zipFileName = `${directoryName}.zip`;
+
+    // Encode the zip filename for Content-Disposition header
+    const encodedZipFileName = encodeURIComponent(zipFileName);
 
     // Create zip archive in memory
     const archive = archiver('zip', {
@@ -122,7 +128,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return new NextResponse(zipBuffer, {
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${zipFileName}"`,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedZipFileName}`,
       },
     });
   } catch (error) {

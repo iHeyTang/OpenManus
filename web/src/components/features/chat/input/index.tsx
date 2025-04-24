@@ -7,16 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { shareTask } from '@/actions/tasks';
-import { Paperclip, PauseCircle, Rocket, Send, Share2, Wrench, X } from 'lucide-react';
+import { Check, Circle, Paperclip, PauseCircle, Rocket, Send, Share2, Wrench, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useConfigDialog } from '../../config/config-dialog';
 import { useLlmConfig } from '../../config/config-llm';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChatInputProps {
   status?: 'idle' | 'thinking' | 'terminating' | 'completed';
-  onSubmit?: (value: { prompt: string; tools: string[]; files: File[] }) => Promise<void>;
+  onSubmit?: (value: { prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => Promise<void>;
   onTerminate?: () => Promise<void>;
   taskId?: string;
 }
@@ -30,6 +32,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [value, setValue] = useState('');
+  const [shouldPlan, setShouldPlan] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [toolsConfigDialogOpen, setToolsConfigDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -43,7 +46,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
       if (status === 'thinking' || status === 'terminating' || !value.trim()) {
         return;
       }
-      await onSubmit?.({ prompt: value.trim(), tools: selectedTools, files });
+      await onSubmit?.({ prompt: value.trim(), tools: selectedTools, files, shouldPlan });
       setValue('');
       setFiles([]);
     }
@@ -87,7 +90,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
     }
     const v = value.trim();
     if (v || files.length > 0) {
-      await onSubmit?.({ prompt: v, tools: selectedTools, files });
+      await onSubmit?.({ prompt: v, tools: selectedTools, files, shouldPlan });
       setValue('');
       setFiles([]);
     }
@@ -165,6 +168,21 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
           />
           <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
             <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge
+                    variant={shouldPlan ? 'default' : 'outline'}
+                    className="flex cursor-pointer items-center gap-1"
+                    onClick={() => setShouldPlan(!shouldPlan)}
+                  >
+                    {shouldPlan ? <Check className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+                    <span>Plan</span>
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Agent will plan the task before executing</p>
+                </TooltipContent>
+              </Tooltip>
               <Badge variant="outline" className="flex cursor-pointer items-center gap-1" onClick={() => setToolsConfigDialogOpen(true)}>
                 <Wrench className="h-3 w-3" />
                 <span>Tools {selectedTools.length ? `(${selectedTools.length})` : ''}</span>
