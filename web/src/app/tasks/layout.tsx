@@ -1,7 +1,7 @@
 'use client';
 
 import { AppSidebar } from '@/components/features/app-sidebar';
-import ConfigDialog from '@/components/features/config/config-dialog';
+import ConfigDialog from '@/components/features/config-dialog';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function RootLayout({

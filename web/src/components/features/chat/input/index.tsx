@@ -11,8 +11,8 @@ import { Check, Circle, Paperclip, PauseCircle, Rocket, Send, Share2, Wrench, X 
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useConfigDialog } from '../../config/config-dialog';
-import { useLlmConfig } from '../../config/config-llm';
+import { useConfigDialog } from '../../config-dialog';
+import { useLlmConfig } from '../../config-dialog/config-llm';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
