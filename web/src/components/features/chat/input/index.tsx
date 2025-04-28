@@ -1,24 +1,24 @@
+import { getLlmConfigs } from '@/actions/config';
+import { shareTask } from '@/actions/tasks';
 import { confirm } from '@/components/block/confirm';
-import { ToolsConfigDialog, useSelectedTools } from '@/components/features/tools/tools-config-dialog';
+import { useConfigDialog } from '@/components/features/config-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { shareTask } from '@/actions/tasks';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useServerAction } from '@/hooks/use-async';
 import { Check, Circle, Paperclip, PauseCircle, Rocket, Send, Share2, Wrench, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useConfigDialog } from '../../config-dialog';
-import { useLlmConfig } from '../../config-dialog/config-llm';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { InputConfigDialog, InputConfigDialogRef, useInputConfig } from './config-dialog';
 
 interface ChatInputProps {
   status?: 'idle' | 'thinking' | 'terminating' | 'completed';
-  onSubmit?: (value: { prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => Promise<void>;
+  onSubmit?: (value: { modelId: string; prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => Promise<void>;
   onTerminate?: () => Promise<void>;
   taskId?: string;
 }
@@ -26,19 +26,22 @@ interface ChatInputProps {
 export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: ChatInputProps) => {
   const router = useRouter();
 
-  const { config, loading } = useLlmConfig();
   const { show: showConfig } = useConfigDialog();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toolsConfigDialogRef = useRef<InputConfigDialogRef>(null);
 
   const [value, setValue] = useState('');
   const [shouldPlan, setShouldPlan] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const [toolsConfigDialogOpen, setToolsConfigDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareExpiration, setShareExpiration] = useState('60');
   const [isSharing, setIsSharing] = useState(false);
-  const { selected: selectedTools, setSelected: setSelectedTools } = useSelectedTools();
+  const { selectedModel, selectedTools } = useInputConfig();
+
+  const { data: llmConfigs, isLoading: loadingLlmConfigs } = useServerAction(getLlmConfigs, {});
+
+  const currentModel = useMemo(() => llmConfigs?.find(c => c.id === selectedModel), [llmConfigs, selectedModel]);
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -46,7 +49,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
       if (status === 'thinking' || status === 'terminating' || !value.trim()) {
         return;
       }
-      await onSubmit?.({ prompt: value.trim(), tools: selectedTools, files, shouldPlan });
+      await onSubmit?.({ modelId: selectedModel, prompt: value.trim(), tools: selectedTools, files, shouldPlan });
       setValue('');
       setFiles([]);
     }
@@ -64,7 +67,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
   };
 
   const handleSendClick = async () => {
-    if (!config) {
+    if (!llmConfigs?.length) {
       showConfig();
       return;
     }
@@ -90,7 +93,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
     }
     const v = value.trim();
     if (v || files.length > 0) {
-      await onSubmit?.({ prompt: v, tools: selectedTools, files, shouldPlan });
+      await onSubmit?.({ modelId: selectedModel, prompt: v, tools: selectedTools, files, shouldPlan });
       setValue('');
       setFiles([]);
     }
@@ -141,7 +144,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
             )}
           </div>
         )}
-        {!config && loading === false && (
+        {!llmConfigs?.length && loadingLlmConfigs === false && (
           <div className="flex justify-center">
             <Button variant="outline" className="flex cursor-pointer items-center gap-2 rounded-full" type="button" onClick={showConfig}>
               <Wrench className="h-4 w-4" />
@@ -154,7 +157,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
             value={value}
             onChange={e => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={status === 'thinking' || status === 'terminating' || !config}
+            disabled={status === 'thinking' || status === 'terminating' || !llmConfigs?.length}
             placeholder={
               status === 'thinking'
                 ? 'Thinking...'
@@ -183,9 +186,10 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
                   <p>Agent will plan the task before executing</p>
                 </TooltipContent>
               </Tooltip>
-              <Badge variant="outline" className="flex cursor-pointer items-center gap-1" onClick={() => setToolsConfigDialogOpen(true)}>
+              <Badge variant="outline" className="flex cursor-pointer items-center gap-1" onClick={() => toolsConfigDialogRef.current?.open()}>
                 <Wrench className="h-3 w-3" />
-                <span>Tools {selectedTools.length ? `(${selectedTools.length})` : ''}</span>
+                <span>{currentModel?.name || currentModel?.model || 'Unknown Model'}</span>
+                <span>with Tools {selectedTools.length ? `(${selectedTools.length})` : ''}</span>
               </Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -209,7 +213,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
                 size="icon"
                 variant="ghost"
                 className="h-8 w-8 cursor-pointer rounded-xl hover:bg-gray-100"
-                disabled={!config}
+                disabled={!llmConfigs?.length}
                 onClick={triggerFileSelect}
                 aria-label="Attach files"
               >
@@ -222,7 +226,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
                 variant="ghost"
                 className="h-8 w-8 cursor-pointer rounded-xl hover:bg-gray-100"
                 onClick={handleSendClick}
-                disabled={status !== 'idle' && status !== 'completed' && !(status === 'thinking' || status === 'terminating') && !config}
+                disabled={status !== 'idle' && status !== 'completed' && !(status === 'thinking' || status === 'terminating') && !llmConfigs?.length}
                 aria-label={status === 'thinking' || status === 'terminating' ? 'Terminate task' : 'Send message'}
               >
                 {status === 'thinking' || status === 'terminating' ? <PauseCircle className="h-4 w-4" /> : <Send className="h-4 w-4" />}
@@ -231,12 +235,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
           </div>
         </div>
       </div>
-      <ToolsConfigDialog
-        open={toolsConfigDialogOpen}
-        onOpenChange={setToolsConfigDialogOpen}
-        selected={selectedTools}
-        onSelected={setSelectedTools}
-      />
+      <InputConfigDialog ref={toolsConfigDialogRef} />
 
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent

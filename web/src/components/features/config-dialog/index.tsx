@@ -35,7 +35,7 @@ export default function ConfigDialog() {
                 currentTab === 'llm' && 'bg-muted',
               )}
             >
-              LLM Configuration
+              Models
             </div>
             <div
               onClick={() => setCurrentTab('preferences')}

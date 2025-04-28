@@ -1,78 +1,112 @@
+import { getLlmConfigs } from '@/actions/config';
 import { getOrganizationToolsInfo } from '@/actions/tools';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { useEffect, useState } from 'react';
-import { Check, X, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useServerAction } from '@/hooks/use-async';
+import { Info, X } from 'lucide-react';
+import React, { useImperativeHandle, useState } from 'react';
 import Markdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { Button } from '@/components/ui/button';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 const DEFAULT_SELECTED_TOOLS = ['web_search', 'str_replace_editor', 'python_execute', 'browser_use'];
 
-export const useSelectedTools = create<{
-  selected: string[];
-  setSelected: (selected: string[]) => void;
+export const useInputConfig = create<{
+  selectedModel: string;
+  setSelectedModel: (selected: string) => void;
+  selectedTools: string[];
+  setSelectedTools: (selected: string[]) => void;
 }>()(
   persist(
     set => ({
-      selected: [],
-      setSelected: selected => set({ selected }),
+      selectedModel: 'default',
+      setSelectedModel: selected => set({ selectedModel: selected }),
+      selectedTools: [],
+      setSelectedTools: selected => set({ selectedTools: selected }),
     }),
     {
-      name: 'selected-tools-storage',
+      name: 'input-config-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: state => ({ selected: state.selected.length > 0 ? state.selected : DEFAULT_SELECTED_TOOLS }),
+      partialize: state => ({
+        selectedModel: state.selectedModel,
+        selectedTools: state.selectedTools.length > 0 ? state.selectedTools : DEFAULT_SELECTED_TOOLS,
+      }),
     },
   ),
 );
 
-interface ToolsConfigDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  selected?: string[];
-  onSelected?: (selected: string[]) => void;
+interface InputConfigDialogProps {}
+
+export interface InputConfigDialogRef {
+  open: () => void;
 }
 
-export const ToolsConfigDialog = ({ open, onOpenChange, selected, onSelected }: ToolsConfigDialogProps) => {
-  const [allTools, setAllTools] = useState<NonNullable<Awaited<ReturnType<typeof getOrganizationToolsInfo>>['data']>>([]);
+export const InputConfigDialog = React.forwardRef<InputConfigDialogRef, InputConfigDialogProps>((props, ref) => {
+  const [open, setOpen] = useState(false);
   const [showTool, setShowTool] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    getOrganizationToolsInfo({}).then(res => {
-      const tools = res.data ?? [];
-      setAllTools(tools);
-    });
-  }, [open]);
+  const { data: llmConfigs } = useServerAction(getLlmConfigs, {});
+  const { data: allTools } = useServerAction(getOrganizationToolsInfo, {});
+
+  const { selectedModel, setSelectedModel, selectedTools, setSelectedTools } = useInputConfig();
+
+  useImperativeHandle(ref, () => ({
+    open: () => {
+      setOpen(true);
+      setSelectedModel(selectedModel);
+      setSelectedTools(selectedTools);
+    },
+  }));
 
   const handleToggleTool = (toolId: string) => {
-    onSelected?.(selected?.includes(toolId) ? selected.filter(id => id !== toolId) : [...(selected ?? []), toolId]);
+    setSelectedTools(selectedTools?.includes(toolId) ? selectedTools.filter(id => id !== toolId) : [...(selectedTools ?? []), toolId]);
   };
 
   const handleShowToolInfo = (toolId: string) => {
     setShowTool(toolId);
   };
 
+  const handleSelectModel = (value: string) => {
+    setSelectedModel(value);
+  };
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent style={{ width: '90vw', maxWidth: '90vw', display: 'flex', flexDirection: 'column', height: '80vh', maxHeight: '80vh' }}>
           <DialogHeader>
             <DialogTitle>Tools Configuration</DialogTitle>
           </DialogHeader>
 
           <div className="flex h-full flex-1 flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Model</Label>
+              <Select value={selectedModel} onValueChange={value => handleSelectModel(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {llmConfigs?.map(config => (
+                    <SelectItem key={config.id} value={config.id}>
+                      {config.name || config.model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {/* Selected Tools Section */}
             <div className="space-y-2">
               <h3 className="text-sm font-medium">Selected Tools</h3>
               <div className="flex flex-wrap gap-2">
-                {selected?.map(toolId => {
-                  const tool = allTools.find(t => t.id === toolId);
+                {selectedTools?.map(toolId => {
+                  const tool = allTools?.find(t => t.id === toolId);
                   return (
                     <Badge key={toolId} variant="secondary" className="flex items-center gap-1">
                       {tool?.name}
@@ -85,11 +119,11 @@ export const ToolsConfigDialog = ({ open, onOpenChange, selected, onSelected }: 
 
             {/* Available Tools Section */}
             <div className="grid flex-1 grid-cols-4 content-start items-start gap-4 overflow-y-auto">
-              {allTools.map(tool => (
+              {allTools?.map(tool => (
                 <div
                   key={tool.id}
                   className={`group hover:bg-muted relative flex h-[80px] cursor-pointer flex-col justify-between rounded-md border p-2 transition-colors ${
-                    selected?.includes(tool.id) ? 'border-primary bg-muted' : ''
+                    selectedTools?.includes(tool.id) ? 'border-primary bg-muted' : ''
                   }`}
                   onClick={() => handleShowToolInfo(tool.id)}
                 >
@@ -114,7 +148,7 @@ export const ToolsConfigDialog = ({ open, onOpenChange, selected, onSelected }: 
                         onClick={e => {
                           e.stopPropagation();
                         }}
-                        checked={selected?.includes(tool.id)}
+                        checked={selectedTools?.includes(tool.id)}
                         onCheckedChange={() => handleToggleTool(tool.id)}
                         className="h-4 w-4"
                       />
@@ -162,7 +196,7 @@ export const ToolsConfigDialog = ({ open, onOpenChange, selected, onSelected }: 
                       },
                     }}
                   >
-                    {allTools.find(t => t.id === showTool)?.description}
+                    {allTools?.find(t => t.id === showTool)?.description}
                   </Markdown>
                 </div>
               </div>
@@ -172,4 +206,4 @@ export const ToolsConfigDialog = ({ open, onOpenChange, selected, onSelected }: 
       </Dialog>
     </>
   );
-};
+});

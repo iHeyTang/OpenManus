@@ -97,9 +97,16 @@ export default function ChatPage() {
     };
   }, []);
 
-  const handleSubmit = async (value: { prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => {
+  const handleSubmit = async (value: { modelId: string; prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => {
     try {
-      const res = await restartTask({ taskId, prompt: value.prompt, tools: value.tools, files: value.files, shouldPlan: value.shouldPlan });
+      const res = await restartTask({
+        taskId,
+        modelId: value.modelId,
+        prompt: value.prompt,
+        tools: value.tools,
+        files: value.files,
+        shouldPlan: value.shouldPlan,
+      });
       if (res.error) {
         console.error('Error restarting task:', res.error);
       }

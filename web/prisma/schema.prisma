@@ -132,10 +132,25 @@ model LlmConfigs {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   organizationId String
+  name           String?
 
-  @@unique([type, organizationId])
   @@index([organizationId])
   @@index([isActive])
+}
+
+model Agents {
+  id             String   @id @default(cuid())
+  name           String
+  description    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organizationId String
+  llmId          String
+  /// [JSONSchema] String[]
+  tools          Json     @default("[]")
+
+  @@index([organizationId])
+  @@index([createdAt])
 }
 
 model InviteCodes {

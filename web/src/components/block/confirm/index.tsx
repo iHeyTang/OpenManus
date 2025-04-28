@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { FieldValues, UseFormReturn } from 'react-hook-form';
-import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -55,6 +55,9 @@ const ConfirmDialog = () => {
   };
   return (
     <Dialog open={open} onOpenChange={value => !isSubmitting && setOpen(value)}>
+      <DialogHeader>
+        <DialogTitle></DialogTitle>
+      </DialogHeader>
       <DialogContent className={cn('w-[380px] pt-8 pr-4 pb-5 pl-6', className)}>
         <div>{content}</div>
         <DialogFooter>

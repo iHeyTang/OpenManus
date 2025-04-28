@@ -25,11 +25,31 @@ export const getLlmConfig = withUserAuth(async ({ organization }: AuthWrapperCon
   };
 });
 
+export const getLlmConfigs = withUserAuth(async ({ organization }: AuthWrapperContext<{}>) => {
+  const configs = await prisma.llmConfigs.findMany({
+    where: { organizationId: organization.id },
+  });
+
+  return configs.map(config => {
+    const decryptedApiKey = config.apiKey ? decryptWithPrivateKey(config.apiKey, privateKey) : '';
+    return {
+      ...config,
+      apiKey: decryptedApiKey ? maskDataForLlmApiKey(decryptedApiKey) : '',
+      baseUrl: config.baseUrl ? config.baseUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@') : '',
+    };
+  });
+});
+
+export const removeLlmConfig = withUserAuth(async ({ organization, args }: AuthWrapperContext<{ id: string }>) => {
+  await prisma.llmConfigs.delete({ where: { id: args.id, organizationId: organization.id } });
+});
+
 export const updateLlmConfig = withUserAuth(
   async ({
     organization,
     args,
   }: AuthWrapperContext<{
+    id?: string;
     model: string;
     apiKey: string;
     baseUrl: string;
@@ -39,9 +59,7 @@ export const updateLlmConfig = withUserAuth(
   }>) => {
     const encryptedApiKey = args.apiKey ? encryptWithPublicKey(args.apiKey, publicKey) : '';
 
-    const existingConfig = await prisma.llmConfigs.findFirst({
-      where: { organizationId: organization.id, type: 'default' },
-    });
+    const existingConfig = args.id ? await prisma.llmConfigs.findUnique({ where: { id: args.id, organizationId: organization.id } }) : null;
 
     if (!existingConfig) {
       await prisma.llmConfigs.create({
@@ -71,6 +89,7 @@ export const updateLlmConfig = withUserAuth(
           temperature: args.temperature,
           apiType: args.apiType,
           isActive: true,
+          type: 'default',
         },
       });
     }

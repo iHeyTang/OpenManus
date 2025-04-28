@@ -34,19 +34,15 @@ export const pageTasks = withUserAuth(async ({ organization, args }: AuthWrapper
 });
 
 type CreateTaskArgs = {
+  modelId: string;
   prompt: string;
   tools: string[];
   files: File[];
   shouldPlan: boolean;
 };
 export const createTask = withUserAuth(async ({ organization, args }: AuthWrapperContext<CreateTaskArgs>) => {
-  const { prompt, tools, files, shouldPlan } = args;
-  const llmConfig = await prisma.llmConfigs.findFirst({
-    where: {
-      type: 'default',
-      organizationId: organization.id,
-    },
-  });
+  const { modelId, prompt, tools, files, shouldPlan } = args;
+  const llmConfig = await prisma.llmConfigs.findUnique({ where: { id: modelId, organizationId: organization.id } });
 
   if (!llmConfig) throw new Error('LLM config not found');
 
@@ -136,15 +132,13 @@ export const createTask = withUserAuth(async ({ organization, args }: AuthWrappe
 });
 
 export const restartTask = withUserAuth(
-  async ({ organization, args }: AuthWrapperContext<{ taskId: string; prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }>) => {
-    const { taskId, prompt, tools, files, shouldPlan } = args;
+  async ({
+    organization,
+    args,
+  }: AuthWrapperContext<{ taskId: string; modelId: string; prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }>) => {
+    const { taskId, modelId, prompt, tools, files, shouldPlan } = args;
 
-    const llmConfig = await prisma.llmConfigs.findFirst({
-      where: {
-        type: 'default',
-        organizationId: organization.id,
-      },
-    });
+    const llmConfig = await prisma.llmConfigs.findUnique({ where: { id: modelId, organizationId: organization.id } });
 
     if (!llmConfig) throw new Error('LLM config not found');
 
