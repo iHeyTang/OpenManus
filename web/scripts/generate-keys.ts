@@ -10,7 +10,7 @@ if (!fs.existsSync(KEYS_DIR)) {
 
 function generateKeyPair() {
   return crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
+    modulusLength: 4096,
     publicKeyEncoding: {
       type: 'spki',
       format: 'pem',
