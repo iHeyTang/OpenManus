@@ -70,7 +70,6 @@ model Tasks {
   organizationId String
   tools          Json             @default("[]")
   shareExpiresAt DateTime?
-  steps          TaskProcesses[]
   progresses     TaskProgresses[]
 
   @@index([organizationId])
@@ -91,25 +90,6 @@ model TaskProgresses {
   content        Json
 
   task Tasks @relation(fields: [taskId], references: [id])
-
-  @@index([organizationId])
-  @@index([organizationId, taskId])
-  @@index([type])
-  @@index([createdAt])
-}
-
-model TaskProcesses {
-  id             String   @id @default(cuid())
-  taskId         String
-  index          Int
-  step           Int
-  result         String   @db.Text
-  type           String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  organizationId String
-
-  task Tasks @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([organizationId, taskId])
