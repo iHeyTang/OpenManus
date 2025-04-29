@@ -5,7 +5,8 @@ from pydantic import Field
 
 from app.agent.base import BaseAgent, BaseAgentEvents
 from app.llm import LLM
-from app.schema import AgentState, Memory
+from app.memory import Memory
+from app.schema import AgentState
 
 REACT_AGENT_EVENTS_PREFIX = "agent:lifecycle:step"
 REACT_AGENT_EVENTS_THINK_PREFIX = "agent:lifecycle:step:think"

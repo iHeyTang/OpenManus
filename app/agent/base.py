@@ -23,8 +23,9 @@ from pydantic import BaseModel, Field, PrivateAttr, model_validator
 from app.config import Config
 from app.llm import LLM
 from app.logger import logger
+from app.memory import Memory
 from app.sandbox.client import SANDBOX_CLIENT
-from app.schema import ROLE_TYPE, AgentState, Memory, Message
+from app.schema import ROLE_TYPE, AgentState, Message
 
 EventHandler = Callable[..., Coroutine[Any, Any, None]]
 
@@ -213,6 +214,8 @@ class BaseAgent(BaseModel, ABC):
             self.llm = LLM(config_name=self.name.lower())
         if not isinstance(self.memory, Memory):
             self.memory = Memory()
+        if not isinstance(self.memory.llm, LLM):
+            self.memory.llm = self.llm
 
         # Initialize private attributes
         if self.enable_event_queue:
@@ -261,7 +264,7 @@ class BaseAgent(BaseModel, ABC):
                 {"old_state": self.state.value, "new_state": previous_state.value},
             )
 
-    def update_memory(
+    async def update_memory(
         self,
         role: ROLE_TYPE,  # type: ignore
         content: str,
@@ -293,7 +296,7 @@ class BaseAgent(BaseModel, ABC):
         kwargs = {"base64_image": base64_image, **(kwargs if role == "tool" else {})}
         message = message_map[role](content, **kwargs)
         logger.info(f"Adding message to memory: {message}")
-        self.memory.add_message(message)
+        await self.memory.add_message(message)
         self.emit(
             BaseAgentEvents.MEMORY_ADDED, {"role": role, "message": message.to_dict()}
         )
@@ -329,7 +332,7 @@ class BaseAgent(BaseModel, ABC):
         self.emit(BaseAgentEvents.LIFECYCLE_PREPARE_COMPLETE, {})
         async with self.state_context(AgentState.RUNNING):
             if request:
-                self.update_memory("user", request)
+                await self.update_memory("user", request)
                 if self.should_plan:
                     await self.plan()
 

@@ -108,7 +108,7 @@ class BrowserContextHelper:
                 self._pre_base64_image = self._current_base64_image
                 self._pre_base64_path = screenshot_path
 
-                self.agent.memory.add_message(image_message)
+                await self.agent.memory.add_message(image_message)
                 self._current_base64_image = None  # Consume the image after adding
 
             self.agent.emit(

@@ -327,9 +327,11 @@ async def restart_task(
     if history_list:
         for message in history_list:
             if message["role"] == "user":
-                task.agent.update_memory(role="user", content=message["message"])
+                await task.agent.update_memory(role="user", content=message["message"])
             else:
-                task.agent.update_memory(role="assistant", content=message["message"])
+                await task.agent.update_memory(
+                    role="assistant", content=message["message"]
+                )
 
     task.agent.initialize(
         task_id,

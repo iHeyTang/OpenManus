@@ -78,7 +78,7 @@ class MCPAgent(ToolCallAgent):
         tools_info = ", ".join(tool_names)
 
         # Add system prompt and available tools information
-        self.memory.add_message(
+        await self.memory.add_message(
             Message.system_message(
                 f"{self.system_prompt}\n\nAvailable MCP tools: {tools_info}"
             )
@@ -116,12 +116,12 @@ class MCPAgent(ToolCallAgent):
         # Log and notify about changes
         if added_tools:
             logger.info(f"Added MCP tools: {added_tools}")
-            self.memory.add_message(
+            await self.memory.add_message(
                 Message.system_message(f"New tools available: {', '.join(added_tools)}")
             )
         if removed_tools:
             logger.info(f"Removed MCP tools: {removed_tools}")
-            self.memory.add_message(
+            await self.memory.add_message(
                 Message.system_message(
                     f"Tools no longer available: {', '.join(removed_tools)}"
                 )
@@ -158,7 +158,7 @@ class MCPAgent(ToolCallAgent):
 
         # Handle multimedia responses
         if isinstance(result, ToolResult) and result.base64_image:
-            self.memory.add_message(
+            await self.memory.add_message(
                 Message.system_message(
                     MULTIMEDIA_RESPONSE_PROMPT.format(tool_name=name)
                 )

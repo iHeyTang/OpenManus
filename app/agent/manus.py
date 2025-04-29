@@ -127,7 +127,9 @@ class Manus(ReActAgent):
             task_dir=self.task_dir,
         )
 
-        self.memory.add_message(Message.system_message(self.system_prompt))
+        await self.update_memory(
+            role="system", content=self.system_prompt, base64_image=None
+        )
 
         self.browser_context_helper = BrowserContextHelper(self)
         self.tool_call_context_helper = ToolCallContextHelper(self)
@@ -174,7 +176,7 @@ class Manus(ReActAgent):
         )
 
         # Add the planning message to memory
-        self.update_memory("user", planning_message)
+        await self.update_memory("user", planning_message)
         self.emit(BaseAgentEvents.LIFECYCLE_PLAN_COMPLETE, {"plan": planning_message})
         return planning_message
 

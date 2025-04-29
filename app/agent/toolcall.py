@@ -98,7 +98,7 @@ class ToolCallContextHelper:
                 logger.error(
                     f"🚨 Token limit error (from RetryError): {token_limit_error}"
                 )
-                self.agent.memory.add_message(
+                await self.agent.memory.add_message(
                     Message.assistant_message(
                         f"Maximum token limit reached, cannot continue execution: {str(token_limit_error)}"
                     )
@@ -153,7 +153,9 @@ class ToolCallContextHelper:
                         f"🤔 Hmm, {self.agent.name} tried to use tools when they weren't available!"
                     )
                 if content:
-                    self.agent.memory.add_message(Message.assistant_message(content))
+                    await self.agent.memory.add_message(
+                        Message.assistant_message(content)
+                    )
                     return True
                 return False
 
@@ -161,9 +163,9 @@ class ToolCallContextHelper:
             assistant_msg = (
                 Message.from_tool_calls(content=content, tool_calls=self.tool_calls)
                 if self.tool_calls
-                else Message.assistant_message(content)
+                else await Message.assistant_message(content)
             )
-            self.agent.memory.add_message(assistant_msg)
+            await self.agent.memory.add_message(assistant_msg)
 
             if self.tool_choices == ToolChoice.REQUIRED and not self.tool_calls:
                 return True  # Will be handled in act()
@@ -177,7 +179,7 @@ class ToolCallContextHelper:
             logger.error(
                 f"🚨 Oops! The {self.agent.name}'s thinking process hit a snag: {e}"
             )
-            self.agent.memory.add_message(
+            await self.agent.memory.add_message(
                 Message.assistant_message(
                     f"Error encountered while processing: {str(e)}"
                 )
@@ -221,7 +223,7 @@ class ToolCallContextHelper:
                 name=command.function.name,
                 base64_image=self._current_base64_image,
             )
-            self.agent.memory.add_message(tool_msg)
+            await self.agent.memory.add_message(tool_msg)
             results.append(result)
         self.agent.emit(ToolCallAgentEvents.TOOL_COMPLETE, {"results": results})
         return results
