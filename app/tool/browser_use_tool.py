@@ -1,8 +1,10 @@
 import asyncio
 import base64
 import json
+import os
 from typing import Generic, Optional, TypeVar
 
+import aiohttp
 from browser_use import Browser as BrowserUseBrowser
 from browser_use import BrowserConfig
 from browser_use.browser.context import BrowserContext, BrowserContextConfig
@@ -14,6 +16,7 @@ from app.config import config
 from app.llm import LLM
 from app.tool.base import BaseTool, ToolResult
 from app.tool.web_search import WebSearch
+from app.workspace import resolve_path
 
 _BROWSER_DESCRIPTION = """\
 A powerful browser automation tool that allows interaction with web pages through various actions.
@@ -60,6 +63,7 @@ class BrowserUseTool(BaseTool, Generic[Context]):
                     "switch_tab",
                     "open_tab",
                     "close_tab",
+                    "save_image",
                 ],
                 "description": "The browser action to perform",
             },
@@ -99,6 +103,14 @@ class BrowserUseTool(BaseTool, Generic[Context]):
                 "type": "integer",
                 "description": "Seconds to wait for 'wait' action",
             },
+            "image_index": {
+                "type": "integer",
+                "description": "Image element index for 'save_image' action",
+            },
+            "image_path": {
+                "type": "string",
+                "description": "Local path to save the image for 'save_image' action",
+            },
         },
         "required": ["action"],
         "dependencies": {
@@ -117,6 +129,7 @@ class BrowserUseTool(BaseTool, Generic[Context]):
             "web_search": ["query"],
             "wait": ["seconds"],
             "extract_content": ["goal"],
+            "save_image": ["image_index", "image_path"],
         },
     }
 
@@ -198,6 +211,8 @@ class BrowserUseTool(BaseTool, Generic[Context]):
         goal: Optional[str] = None,
         keys: Optional[str] = None,
         seconds: Optional[int] = None,
+        image_index: Optional[int] = None,
+        image_path: Optional[str] = None,
         **kwargs,
     ) -> ToolResult:
         """
@@ -214,6 +229,8 @@ class BrowserUseTool(BaseTool, Generic[Context]):
             goal: Extraction goal for content extraction
             keys: Keys to send for keyboard actions
             seconds: Seconds to wait
+            image_index: Image element index for 'save_image' action
+            image_path: Local path to save the image for 'save_image' action
             **kwargs: Additional arguments
 
         Returns:
@@ -468,6 +485,61 @@ Page content:
                     seconds_to_wait = seconds if seconds is not None else 3
                     await asyncio.sleep(seconds_to_wait)
                     return ToolResult(output=f"Waited for {seconds_to_wait} seconds")
+
+                elif action == "save_image":
+                    if image_index is None or not image_path:
+                        return ToolResult(
+                            error="Image index and image path are required for 'save_image' action"
+                        )
+
+                    element = await context.get_dom_element_by_index(image_index)
+                    if not element:
+                        return ToolResult(
+                            error=f"Element with index {image_index} not found"
+                        )
+
+                    page = await context.get_current_page()
+
+                    # Get image data from the element
+                    img_data = await page.evaluate(
+                        """
+                        (xpath) => {
+                            const element = document.evaluate(xpath, document, null,
+                                XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                            if (!element || !element.src) return null;
+                            return element.src;
+                        }
+                    """,
+                        element.xpath,
+                    )
+
+                    if not img_data:
+                        return ToolResult(error="No image found at the specified index")
+
+                    # Ensure save directory exists
+                    image_path = resolve_path(image_path)
+                    os.makedirs(os.path.dirname(image_path), exist_ok=True)
+
+                    # Add .jpg extension if path doesn't have one
+                    if not os.path.splitext(image_path)[1]:
+                        image_path = f"{image_path}.jpg"
+
+                    # Save the image data
+                    try:
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(img_data) as response:
+                                if response.status == 200:
+                                    with open(image_path, "wb") as f:
+                                        f.write(await response.read())
+                                    return ToolResult(
+                                        output=f"Successfully saved image to {image_path}"
+                                    )
+                                else:
+                                    return ToolResult(
+                                        error=f"Failed to save image: HTTP {response.status}"
+                                    )
+                    except Exception as e:
+                        return ToolResult(error=f"Failed to save image: {str(e)}")
 
                 else:
                     return ToolResult(error=f"Unknown action: {action}")

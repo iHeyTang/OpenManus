@@ -90,6 +90,15 @@ Available browser actions:
 - Input: browser_use with action="input_text", index=N, text="..."
 - Extract: browser_use with action="extract_content", goal="..."
 - Scroll: browser_use with action="scroll_down" or "scroll_up"
+- Save Image: browser_use with action="save_image", image_index=N, image_path="path/to/save.jpg"
+
+Resource types and their common elements:
+- image: <img> elements with src attribute
+- pdf: <a> elements with href ending in .pdf
+- excel: <a> elements with href ending in .xls or .xlsx
+- word: <a> elements with href ending in .doc or .docx
+- text: <a> elements with href ending in .txt or .csv
+- other: any downloadable resource with href or src attribute
 
 Consider both what's visible and what might be beyond the current viewport.
 Be methodical - remember your progress and what you've learned so far.
