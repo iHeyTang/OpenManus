@@ -293,8 +293,11 @@ class BaseAgent(BaseModel, ABC):
             raise ValueError(f"Unsupported message role: {role}")
 
         # Create message with appropriate parameters based on role
-        kwargs = {"base64_image": base64_image, **(kwargs if role == "tool" else {})}
-        message = message_map[role](content, **kwargs)
+        if role == "assistant":
+            kwargs = {"base64_image": base64_image}
+        elif role == "tool":
+            kwargs = {"base64_image": base64_image, **kwargs}
+        message: Message = message_map[role](content, **kwargs)
         logger.info(f"Adding message to memory: {message}")
         await self.memory.add_message(message)
         self.emit(
