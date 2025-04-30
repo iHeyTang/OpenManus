@@ -1,0 +1,11 @@
+common:
+  welcome: "Welcome"
+  login: "Login"
+  logout: "Logout"
+  settings: "Settings"
+  language: "Language"
+
+errors:
+  general: "Something went wrong"
+  notFound: "Page not found"
+  unauthorized: "Unauthorized access"

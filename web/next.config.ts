@@ -1,5 +1,8 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+import type { NextConfig } from 'next';
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   output: 'standalone',
   images: {
     unoptimized: false,
@@ -43,4 +46,5 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+const withNextIntl = createNextIntlPlugin();
+export default withNextIntl(nextConfig);

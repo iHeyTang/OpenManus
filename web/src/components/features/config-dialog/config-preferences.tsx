@@ -1,85 +1,75 @@
 'use client';
 
 import { getPreferences, updatePreferences } from '@/actions/config';
-import { Button } from '@/components/ui/button';
-import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormField } from '@/components/ui/form';
+import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LANGUAGE_CODE_OPTIONS } from '@/lib/language';
+import { localeNames } from '@/i18n/config';
+import { locales } from '@/i18n/config';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-
-interface ConfigFormData {
-  language?: string;
-}
+import { useRouter } from 'next/navigation';
 
 export default function ConfigLlm(props: { onSuccess?: (success: boolean) => void }) {
-  const [loading, setLoading] = useState(false);
+  const t = useTranslations('config');
+  const router = useRouter();
 
-  const form = useForm<ConfigFormData>({
-    defaultValues: { language: '' },
-  });
+  const [loading, setLoading] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('');
 
   useEffect(() => {
     const loadConfig = async () => {
       try {
         const config = await getPreferences({});
-        form.reset({ language: config.data?.language || undefined });
+        setSelectedLanguage(config.data?.language || '');
       } catch (error) {
-        toast.error('Failed to load configuration');
+        toast.error(t('toast.loadConfigError'));
       }
     };
     loadConfig();
-  }, [form]);
+  }, [t]);
 
-  const onSubmit = async (data: ConfigFormData) => {
+  const handleLanguageChange = async (value: string) => {
     setLoading(true);
-    await updatePreferences({ language: data.language });
-    setLoading(false);
-    toast.success('Preferences updated');
-    props.onSuccess?.(true);
+    try {
+      await updatePreferences({ language: value });
+      setSelectedLanguage(value);
+      toast.success(t('toast.updateSuccess'));
+      props.onSuccess?.(true);
+      router.refresh();
+    } catch (error) {
+      toast.error(t('toast.updateError'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <>
-      <DialogHeader className="mb-2">
-        <DialogTitle>Preferences</DialogTitle>
-        <DialogDescription>Configure your preferences</DialogDescription>
+      <DialogHeader className="mb-10">
+        <DialogTitle>{t('preferences')}</DialogTitle>
+        <DialogDescription>{t('preferencesDescription')}</DialogDescription>
       </DialogHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="language"
-            render={({ field }) => (
-              <div className="space-y-2">
-                <Label htmlFor="language" className="flex items-center gap-1">
-                  Language (LLM Answer)
-                </Label>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGE_CODE_OPTIONS.map(language => (
-                      <SelectItem key={language.value} value={language.value}>
-                        {language.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          />
-          <DialogFooter>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </Form>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="language" className="flex items-center gap-1">
+            {t('language')}
+          </Label>
+          <Select value={selectedLanguage} onValueChange={handleLanguageChange} disabled={loading}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t('languageSelectPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {locales.map(language => (
+                <SelectItem key={language} value={language}>
+                  {localeNames[language]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
     </>
   );
 }

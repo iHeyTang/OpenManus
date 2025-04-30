@@ -12,6 +12,7 @@ import React, { useImperativeHandle, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { ConfigFormData } from '.';
+import { useTranslations } from 'next-intl';
 
 interface ConfigDialogProps {
   onSuccess?: (success: boolean) => void;
@@ -22,6 +23,7 @@ export interface ConfigDialogRef {
 }
 
 export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>((props, ref) => {
+  const t = useTranslations('config.llm');
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -47,21 +49,21 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
       if (!data.model) {
         errors.model = {
           type: 'required',
-          message: 'Model is required',
+          message: t('required'),
         };
       }
 
       if (!data.apiKey) {
         errors.apiKey = {
           type: 'required',
-          message: 'API Key is required',
+          message: t('required'),
         };
       }
 
       if (!data.baseUrl) {
         errors.baseUrl = {
           type: 'required',
-          message: 'Base URL is required',
+          message: t('required'),
         };
       }
 
@@ -76,11 +78,11 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
     try {
       setLoading(true);
       await updateLlmConfig({ ...data, id: data.id || undefined });
-      toast.success('Configuration updated');
+      toast.success(t('configUpdated'));
       props.onSuccess?.(true);
       setOpen(false);
     } catch (error) {
-      toast.error('Failed to update configuration');
+      toast.error(t('configUpdateError'));
       props.onSuccess?.(false);
     } finally {
       setLoading(false);
@@ -92,8 +94,8 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
       <Dialog open={open} onOpenChange={() => setOpen(false)}>
         <DialogContent>
           <DialogHeader className="mb-2">
-            <DialogTitle>LLM Configuration</DialogTitle>
-            <DialogDescription>Configure your LLM API settings</DialogDescription>
+            <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription>{t('description')}</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -103,7 +105,7 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
                 render={({ field }) => (
                   <div className="space-y-2">
                     <Label htmlFor="model" className="flex items-center gap-1">
-                      Model
+                      {t('model')}
                       <span className="text-red-500">*</span>
                     </Label>
                     <Input id="model" {...field} placeholder="e.g. deepseek-chat" />
@@ -117,10 +119,10 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
                 render={({ field }) => (
                   <div className="space-y-2">
                     <Label htmlFor="apiKey" className="flex items-center gap-1">
-                      API Key
+                      {t('apiKey')}
                       <span className="text-red-500">*</span>
                     </Label>
-                    <Input id="apiKey" {...field} placeholder="Enter your API Key" />
+                    <Input id="apiKey" {...field} placeholder={t('apiKeyPlaceholder')} />
                     {form.formState.errors.apiKey && <p className="text-sm text-red-500">{form.formState.errors.apiKey.message}</p>}
                   </div>
                 )}
@@ -131,10 +133,10 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
                 render={({ field }) => (
                   <div className="space-y-2">
                     <Label htmlFor="baseUrl" className="flex items-center gap-1">
-                      API Base URL
+                      {t('baseUrl')}
                       <span className="text-red-500">*</span>
                     </Label>
-                    <Input id="baseUrl" {...field} placeholder="API Base URL" />
+                    <Input id="baseUrl" {...field} placeholder={t('baseUrlPlaceholder')} />
                     {form.formState.errors.baseUrl && <p className="text-sm text-red-500">{form.formState.errors.baseUrl.message}</p>}
                   </div>
                 )}
@@ -144,7 +146,7 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
                 name="maxTokens"
                 render={({ field }) => (
                   <div className="space-y-2">
-                    <Label htmlFor="maxTokens">Max Tokens</Label>
+                    <Label htmlFor="maxTokens">{t('maxTokens')}</Label>
                     <div className="flex items-center space-x-4">
                       <div className="flex-1">
                         <Slider min={1} max={8192} step={1} value={[field.value]} onValueChange={([value]) => field.onChange(value)} />
@@ -172,7 +174,7 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
                 name="temperature"
                 render={({ field }) => (
                   <div className="space-y-2">
-                    <Label htmlFor="temperature">Temperature</Label>
+                    <Label htmlFor="temperature">{t('temperature')}</Label>
                     <div className="flex items-center space-x-4">
                       <div className="flex-1">
                         <Slider min={0} max={2} step={0.1} value={[field.value]} onValueChange={([value]) => field.onChange(value)} />
@@ -204,25 +206,25 @@ export const ConfigDialog = React.forwardRef<ConfigDialogRef, ConfigDialogProps>
                     rel="noopener noreferrer"
                     className="text-primary text-sm hover:underline"
                   >
-                    Get API Key from DeepSeek
+                    {t('getApiKey')}
                   </Link>
                   <div className="flex space-x-2">
                     <Button type="submit" disabled={loading}>
-                      {loading ? 'Saving...' : 'Save'}
+                      {loading ? t('saving') : t('save')}
                     </Button>
                   </div>
                 </div>
                 <p className="text-muted-foreground text-center text-xs">
-                  Your key will be encrypted and stored using{' '}
+                  {t('encryptionNote')}{' '}
                   <Link
                     href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
                     target="_blank"
                     className="text-primary hover:underline"
                     rel="noopener noreferrer"
                   >
-                    PKCS1_OAEP
+                    {t('encryptionTech')}
                   </Link>{' '}
-                  encryption technology
+                  {t('encryptionTechNote')}
                 </p>
               </div>
             </form>

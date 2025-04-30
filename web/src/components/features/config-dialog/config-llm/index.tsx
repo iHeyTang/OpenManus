@@ -9,6 +9,7 @@ import { Pencil, Plus, Trash } from 'lucide-react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
 import { ConfigDialog, ConfigDialogRef } from './config-dialog';
+import { useTranslations } from 'next-intl';
 
 export interface ConfigFormData {
   id?: string;
@@ -21,6 +22,7 @@ export interface ConfigFormData {
 }
 
 export default function ConfigLlm() {
+  const t = useTranslations('config.llm');
   const { data: configs, refresh: refreshConfigs } = useServerAction(getLlmConfigs, {});
   const configDialogRef = useRef<ConfigDialogRef>(null);
 
@@ -34,18 +36,18 @@ export default function ConfigLlm() {
 
   const handleDelete = (config: ConfigFormData) => {
     confirm({
-      content: 'Are you sure you want to remove this model?',
+      content: t('confirmDelete'),
       onConfirm: async () => {
         if (config.id) {
           await removeLlmConfig({ id: config.id });
           refreshConfigs();
-          toast.success('Model removed');
+          toast.success(t('modelRemoved'));
         }
       },
       buttonText: {
-        confirm: 'Remove',
-        cancel: 'Cancel',
-        loading: 'Removing...',
+        confirm: t('remove'),
+        cancel: t('cancel'),
+        loading: t('removing'),
       },
     });
   };
@@ -53,14 +55,14 @@ export default function ConfigLlm() {
   return (
     <>
       <DialogHeader className="mb-2">
-        <DialogTitle>LLM Configuration</DialogTitle>
-        <DialogDescription>Configure your LLM API settings</DialogDescription>
+        <DialogTitle>{t('title')}</DialogTitle>
+        <DialogDescription>{t('description')}</DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-4">
         <div className="flex justify-end">
           <Button onClick={handleAddNew} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
-            Add New Model
+            {t('addNew')}
           </Button>
         </div>
         <div className="grid gap-4">

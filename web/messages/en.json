@@ -1,0 +1,57 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "login": "Login",
+    "logout": "Logout",
+    "settings": "Settings",
+    "language": "Language"
+  },
+  "errors": {
+    "general": "Something went wrong",
+    "notFound": "Page not found",
+    "unauthorized": "Unauthorized access"
+  },
+  "config": {
+    "language": "Language",
+    "preferences": "Preferences",
+    "preferencesDescription": "Configure your application preferences",
+    "languageSelectPlaceholder": "Select a language",
+    "toast": {
+      "loadConfigError": "Failed to load configuration",
+      "updateSuccess": "Preferences updated",
+      "updateError": "Failed to update preferences"
+    },
+    "llm": {
+      "title": "Models",
+      "description": "Configure your models",
+      "model": "Model",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter your API Key",
+      "baseUrl": "API Base URL",
+      "baseUrlPlaceholder": "Enter your API Base URL",
+      "maxTokens": "Max Tokens",
+      "temperature": "Temperature",
+      "required": "Required",
+      "getApiKey": "Get API Key from DeepSeek",
+      "save": "Save",
+      "saving": "Saving...",
+      "addNew": "Add New Model",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Are you sure you want to remove this model?",
+      "remove": "Remove",
+      "removing": "Removing...",
+      "cancel": "Cancel",
+      "modelRemoved": "Model removed",
+      "configUpdated": "Configuration updated",
+      "configUpdateError": "Failed to update configuration",
+      "encryptionNote": "Your key will be encrypted and stored using",
+      "encryptionTech": "PKCS1_OAEP",
+      "encryptionTechNote": "encryption technology"
+    },
+    "sidebar": {
+      "models": "Models",
+      "preferences": "Preferences"
+    }
+  }
+}

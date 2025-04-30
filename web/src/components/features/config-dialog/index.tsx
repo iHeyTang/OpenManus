@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { create } from 'zustand';
 import ConfigLlm from './config-llm';
 import ConfigPreferences from './config-preferences';
+import { useTranslations } from 'next-intl';
 
 export const useConfigDialog = create<{ open: boolean; show: () => void; hide: () => void }>(set => ({
   open: false,
@@ -14,6 +15,7 @@ export const useConfigDialog = create<{ open: boolean; show: () => void; hide: (
 }));
 
 export default function ConfigDialog() {
+  const t = useTranslations('config.sidebar');
   const { open, show, hide } = useConfigDialog();
 
   const [currentTab, setCurrentTab] = useState<'llm' | 'preferences'>('llm');
@@ -35,7 +37,7 @@ export default function ConfigDialog() {
                 currentTab === 'llm' && 'bg-muted',
               )}
             >
-              Models
+              {t('models')}
             </div>
             <div
               onClick={() => setCurrentTab('preferences')}
@@ -48,7 +50,7 @@ export default function ConfigDialog() {
                 currentTab === 'preferences' && 'bg-muted',
               )}
             >
-              Preferences
+              {t('preferences')}
             </div>
             <div className="mt-auto flex flex-col justify-center gap-2 pb-2">
               <div className="text-muted-foreground/80 flex items-center gap-1.5 text-[10px]">

@@ -1,0 +1,57 @@
+{
+  "common": {
+    "welcome": "欢迎",
+    "login": "登录",
+    "logout": "退出",
+    "settings": "设置",
+    "language": "语言"
+  },
+  "errors": {
+    "general": "发生错误",
+    "notFound": "页面未找到",
+    "unauthorized": "未授权访问"
+  },
+  "config": {
+    "language": "语言",
+    "preferences": "偏好设置",
+    "preferencesDescription": "配置你的应用程序偏好设置",
+    "languageSelectPlaceholder": "选择语言",
+    "toast": {
+      "loadConfigError": "加载配置失败",
+      "updateSuccess": "偏好设置已更新",
+      "updateError": "更新偏好设置失败"
+    },
+    "llm": {
+      "title": "模型",
+      "description": "配置你的模型",
+      "model": "模型",
+      "apiKey": "API 密钥",
+      "apiKeyPlaceholder": "输入你的 API 密钥",
+      "baseUrl": "API 基础 URL",
+      "baseUrlPlaceholder": "输入你的 API 基础 URL",
+      "maxTokens": "最大令牌数",
+      "temperature": "温度",
+      "required": "必填",
+      "getApiKey": "从 DeepSeek 获取 API 密钥",
+      "save": "保存",
+      "saving": "保存中...",
+      "addNew": "添加新模型",
+      "edit": "编辑",
+      "delete": "删除",
+      "confirmDelete": "确定要删除此模型吗？",
+      "remove": "删除",
+      "removing": "删除中...",
+      "cancel": "取消",
+      "modelRemoved": "模型已删除",
+      "configUpdated": "配置已更新",
+      "configUpdateError": "更新配置失败",
+      "encryptionNote": "你的密钥将使用",
+      "encryptionTech": "PKCS1_OAEP",
+      "encryptionTechNote": "加密技术进行加密和存储"
+    },
+    "sidebar": {
+      "models": "模型",
+      "preferences": "偏好设置"
+    }
+  }
+}

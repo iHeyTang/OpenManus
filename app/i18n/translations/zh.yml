@@ -1,0 +1,11 @@
+common:
+  welcome: "欢迎"
+  login: "登录"
+  logout: "退出"
+  settings: "设置"
+  language: "语言"
+
+errors:
+  general: "发生错误"
+  notFound: "页面未找到"
+  unauthorized: "未授权访问"
