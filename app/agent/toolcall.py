@@ -163,7 +163,7 @@ class ToolCallContextHelper:
             assistant_msg = (
                 Message.from_tool_calls(content=content, tool_calls=self.tool_calls)
                 if self.tool_calls
-                else await Message.assistant_message(content)
+                else Message.assistant_message(content)
             )
             await self.agent.memory.add_message(assistant_msg)
 
