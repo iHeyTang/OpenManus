@@ -9,8 +9,6 @@ import path from 'path';
 
 const MANUS_URL = process.env.MANUS_URL || 'http://localhost:5172';
 
-const publicKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'public.pem'), 'utf8');
-
 const ajv = new Ajv();
 
 export const getOrganizationToolsInfo = withUserAuth(async ({ organization }: AuthWrapperContext<{}>) => {
@@ -42,6 +40,7 @@ export const getOrganizationToolsInfo = withUserAuth(async ({ organization }: Au
 });
 
 export const installTool = withUserAuth(async ({ organization, args }: AuthWrapperContext<{ toolId: string; env: Record<string, string> }>) => {
+  const publicKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'public.pem'), 'utf8');
   const { toolId, env } = args;
   const tool = await prisma.tools.findUnique({
     where: { id: toolId },

@@ -6,10 +6,8 @@ import { encryptWithPublicKey, decryptWithPrivateKey } from '@/lib/crypto';
 import fs from 'fs';
 import path from 'path';
 
-const publicKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'public.pem'), 'utf8');
-const privateKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'private.pem'), 'utf8');
-
 export const getLlmConfig = withUserAuth(async ({ organization }: AuthWrapperContext<{}>) => {
+  const privateKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'private.pem'), 'utf8');
   const config = await prisma.llmConfigs.findFirst({
     where: { organizationId: organization.id, type: 'default' },
   });
@@ -26,6 +24,7 @@ export const getLlmConfig = withUserAuth(async ({ organization }: AuthWrapperCon
 });
 
 export const getLlmConfigs = withUserAuth(async ({ organization }: AuthWrapperContext<{}>) => {
+  const privateKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'private.pem'), 'utf8');
   const configs = await prisma.llmConfigs.findMany({
     where: { organizationId: organization.id },
   });
@@ -57,6 +56,8 @@ export const updateLlmConfig = withUserAuth(
     temperature: number;
     apiType: string;
   }>) => {
+    const publicKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'public.pem'), 'utf8');
+    const privateKey = fs.readFileSync(path.join(process.cwd(), 'keys', 'private.pem'), 'utf8');
     const encryptedApiKey = args.apiKey ? encryptWithPublicKey(args.apiKey, publicKey) : '';
 
     const existingConfig = args.id ? await prisma.llmConfigs.findUnique({ where: { id: args.id, organizationId: organization.id } }) : null;
