@@ -86,18 +86,21 @@ async def event_generator(task_id: str):
 
     while True:
         try:
-            event = await queue.get()
+            event = await asyncio.wait_for(queue.get(), timeout=10)
             formatted_event = dumps(event)
 
+            if not event.get("type"):
+                yield ":heartbeat\n\n"
+                continue
+
             # Send actual event data
-            if event.get("type"):
-                yield f"data: {formatted_event}\n\n"
-                if event.get("event_name") == BaseAgentEvents.LIFECYCLE_COMPLETE:
-                    break
+            yield f"data: {formatted_event}\n\n"
 
-            # Send heartbeat
+            if event.get("event_name") == BaseAgentEvents.LIFECYCLE_COMPLETE:
+                break
+        except asyncio.TimeoutError:
             yield ":heartbeat\n\n"
-
+            continue
         except asyncio.CancelledError:
             logger.info(f"Client disconnected for task {task_id}")
             break
