@@ -1,0 +1,10 @@
+{
+  "name": "markdown-viewer",
+  "version": "1.0.0",
+  "description": "Markdown文件查看器",
+  "author": "Your Name",
+  "fileTypes": ["md", "markdown"],
+  "entryPoint": "index.js",
+  "styles": ["style.css"],
+  "permissions": ["read"]
+}

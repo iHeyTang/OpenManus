@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Message } from '@/lib/chat-messages/types';
-import { usePreviewData } from './store';
+import { usePreviewData } from '../store';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { githubGist } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,13 +20,22 @@ import { cn } from '@/lib/utils';
 import { getImageUrl } from '@/lib/image';
 import Image from 'next/image';
 import { useAsync } from '@/hooks/use-async';
-import { Markdown } from '@/components/block/markdown/markdown';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { FilePreviewContainer } from '@/components/features/chat/preview/preview-content/file-preview-container';
+import { FilePreviewPluginManager } from '@/components/features/chat/preview/preview-content/file-preview-plugin-manager';
+
+const pluginManager = new FilePreviewPluginManager();
 
 export const PreviewContent = ({ messages }: { messages: Message[] }) => {
   const { data } = usePreviewData();
+
+  useEffect(() => {
+    const pluginPaths = ['markdown-viewer', 'csv-viewer'];
+    pluginManager.loadAllPlugins(pluginPaths);
+  }, []);
+
   if (data?.type === 'tool') {
     const executionStart = messages.find(m => m.type === 'agent:lifecycle:step:act:tool:execute:start' && m.content.id === data.toolId);
     const executionComplete = messages.find(m => m.type === 'agent:lifecycle:step:act:tool:execute:complete' && m.content.id === data.toolId);
@@ -401,7 +410,11 @@ const FileContent = ({ blob, path }: { blob: Blob; path: string }) => {
     return <div className="text-muted-foreground p-4 text-center">Could not load file content</div>;
   }
 
-  const language = getFileLanguage(path);
+  const fileType = path.split('.').pop()?.toLowerCase() || '';
+  const plugin = pluginManager.getPluginForFileType(fileType);
+  if (plugin) {
+    return <FilePreviewContainer fileContent={content} fileType={fileType} fileName={path} pluginManager={pluginManager} />;
+  }
 
   // For binary files or very large files, show a simplified view
   if (content.length > 100000 || /[\x00-\x08\x0E-\x1F]/.test(content.substring(0, 1000))) {
@@ -422,10 +435,7 @@ const FileContent = ({ blob, path }: { blob: Blob; path: string }) => {
     );
   }
 
-  if (language === 'markdown') {
-    return <Markdown>{content}</Markdown>;
-  }
-
+  const language = getFileLanguage(path);
   return (
     <SyntaxHighlighter
       language={language}
@@ -500,6 +510,7 @@ const getFileLanguage = (path: string): string => {
     env: 'env',
     dockerfile: 'dockerfile',
     'docker-compose': 'yaml',
+    csv: 'csv',
   };
   return languageMap[ext || ''] || 'text';
 };
