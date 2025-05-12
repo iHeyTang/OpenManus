@@ -1,0 +1,9 @@
+{
+  "name": "csv-viewer",
+  "version": "1.0.0",
+  "description": "CSV文件查看器",
+  "author": "Your Name",
+  "fileTypes": ["csv"],
+  "entryPoint": "index.js",
+  "permissions": ["read"]
+}

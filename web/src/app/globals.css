@@ -130,4 +130,10 @@
 .markdown-body.chat {
   @apply bg-muted;
   font-size: 0.875rem;
+
+  pre,
+  code {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
 }
