@@ -67,7 +67,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gray-100">
+    <div className="flex h-screen flex-col">
       <div className="flex-1 space-y-4 overflow-y-auto p-4 pb-20">
         <EmptyState />
       </div>

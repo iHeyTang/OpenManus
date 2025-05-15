@@ -10,14 +10,16 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { ThemeToggle } from '../theme-toggle';
+import { useTheme } from 'next-themes';
 
 export default function ConfigLlm(props: { onSuccess?: (success: boolean) => void }) {
   const t = useTranslations('config');
   const router = useRouter();
 
+  const { setTheme, theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('');
-
   useEffect(() => {
     const loadConfig = async () => {
       try {
@@ -45,6 +47,12 @@ export default function ConfigLlm(props: { onSuccess?: (success: boolean) => voi
     }
   };
 
+  const handleAppearanceChange = async (value: string) => {
+    setTheme(value);
+    props.onSuccess?.(true);
+    router.refresh();
+  };
+
   return (
     <>
       <DialogHeader className="mb-10">
@@ -66,6 +74,21 @@ export default function ConfigLlm(props: { onSuccess?: (success: boolean) => voi
                   {localeNames[language]}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="appearance" className="flex items-center gap-1">
+            {t('appearance')}
+          </Label>
+          <Select value={theme} onValueChange={handleAppearanceChange} disabled={loading}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="light">{t('apperanceThemes.light')}</SelectItem>
+              <SelectItem value="dark">{t('apperanceThemes.dark')}</SelectItem>
+              <SelectItem value="system">{t('apperanceThemes.system')}</SelectItem>
             </SelectContent>
           </Select>
         </div>

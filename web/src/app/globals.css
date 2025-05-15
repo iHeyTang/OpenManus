@@ -121,10 +121,28 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  ::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/50 hover:bg-muted-foreground/70 rounded-full transition-colors;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) var(--muted);
+  }
 }
 
 .markdown-body {
   @apply overflow-x-auto;
+  color: var(--foreground);
 }
 
 .markdown-body.chat {

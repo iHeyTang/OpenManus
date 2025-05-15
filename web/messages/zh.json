@@ -21,6 +21,12 @@
       "updateSuccess": "偏好设置已更新",
       "updateError": "更新偏好设置失败"
     },
+    "appearance": "外观",
+    "apperanceThemes": {
+      "light": "亮色",
+      "dark": "暗色",
+      "system": "系统"
+    },
     "llm": {
       "title": "模型",
       "description": "配置你的模型",

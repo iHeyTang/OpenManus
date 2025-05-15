@@ -30,13 +30,13 @@ window['csv-viewer'] = {
       // create table html
       const tableHtml = `
         <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+          <table class="min-w-full divide-y divide-muted">
+            <thead class="bg-muted">
               <tr>
                 ${headers
                   .map(
                     header => `
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     ${header}
                   </th>
                 `,
@@ -44,15 +44,15 @@ window['csv-viewer'] = {
                   .join('')}
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-background divide-y divide-muted">
               ${data
                 .map(
                   row => `
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-muted">
                   ${headers
                     .map(
                       header => `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       ${row[header] || ''}
                     </td>
                   `,
@@ -81,16 +81,16 @@ window['csv-viewer'] = {
           width: 100%;
         }
         th, td {
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--border);
           padding: 0.5rem;
         }
         th {
-          background-color: #f9fafb;
+          background-color: var(--background);
           font-weight: 600;
           text-align: left;
         }
         tr:hover {
-          background-color: #f3f4f6;
+          background-color: var(--muted);
         }
       `;
       document.head.appendChild(style);

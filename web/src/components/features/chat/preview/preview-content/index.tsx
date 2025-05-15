@@ -98,12 +98,19 @@ export const PreviewContent = ({ messages }: { messages: Message[] }) => {
                   <ArrowRightIcon className="h-3.5 w-3.5" />
                   <span>Result</span>
                 </div>
-                <div className={cn('overflow-hidden rounded-md border', typeof result === 'string' && result.length > 1000 ? 'max-h-96' : '')}>
+                <div
+                  className={cn(
+                    'bg-muted/40 text-foreground overflow-hidden rounded-md border',
+                    typeof result === 'string' && result.length > 1000 ? 'max-h-96' : '',
+                  )}
+                >
                   <SyntaxHighlighter
                     language="json"
                     showLineNumbers
                     style={githubGist}
                     customStyle={{
+                      color: 'inherit',
+                      backgroundColor: 'inherit',
                       fontSize: '0.875rem',
                       lineHeight: '1.5',
                       margin: 0,

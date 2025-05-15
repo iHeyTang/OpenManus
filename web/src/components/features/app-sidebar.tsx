@@ -93,7 +93,7 @@ export function AppSidebar() {
               {tasks.map(item => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
-                    <Link href={`/tasks/${item.id}`} className={cn(currentTaskId === item.id && 'bg-gray-100')}>
+                    <Link href={`/tasks/${item.id}`} className={cn(currentTaskId === item.id && 'bg-muted')}>
                       <span>{item.prompt}</span>
                     </Link>
                   </SidebarMenuButton>

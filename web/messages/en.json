@@ -21,6 +21,12 @@
       "updateSuccess": "Preferences updated",
       "updateError": "Failed to update preferences"
     },
+    "appearance": "Appearance",
+    "apperanceThemes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
     "llm": {
       "title": "Models",
       "description": "Configure your models",
