@@ -77,9 +77,8 @@ export const updateLlmConfig = withUserAuth(
         },
       });
     } else {
-      const apiKey = isMaybeSameMaskedLlmApiKey(decryptWithPrivateKey(existingConfig.apiKey, privateKey), args.apiKey)
-        ? existingConfig.apiKey
-        : encryptedApiKey;
+      const sameApiKey = isMaybeSameMaskedLlmApiKey(decryptWithPrivateKey(existingConfig.apiKey, privateKey), args.apiKey);
+      const apiKey = sameApiKey ? existingConfig.apiKey : encryptedApiKey;
       await prisma.llmConfigs.update({
         where: { id: existingConfig.id, organizationId: organization.id },
         data: {
