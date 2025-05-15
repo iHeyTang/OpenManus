@@ -51,7 +51,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+    <div className="from-background to-muted flex min-h-screen w-screen items-center justify-center bg-gradient-to-b">
       <Card className="w-[400px] shadow-lg">
         <CardContent>
           <div className="flex justify-center">

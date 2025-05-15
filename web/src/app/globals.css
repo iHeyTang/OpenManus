@@ -143,6 +143,7 @@
 .markdown-body {
   @apply overflow-x-auto;
   color: var(--foreground);
+  background-color: var(--background);
 }
 
 .markdown-body.chat {
