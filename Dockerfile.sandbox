@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+# Install Node.js 20.x and clean all temporary files
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set working directory
+WORKDIR /app
+
+# Install Python package manager
+RUN pip install --no-cache-dir uvenv
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV NODE_ENV=development
+
+# Verify installation
+RUN python --version
+RUN node --version
+RUN npm --version
+
+CMD ["bash"]

@@ -134,6 +134,7 @@ class Manus(ReActAgent):
         self.browser_context_helper = BrowserContextHelper(self)
         self.tool_call_context_helper = ToolCallContextHelper(self)
         self.tool_call_context_helper.available_tools = ToolCollection(Terminate())
+        await self.tool_call_context_helper.mcp.initialize()
 
         if self.tools:
             for tool in self.tools:
@@ -228,6 +229,4 @@ class Manus(ReActAgent):
             await self.browser_context_helper.cleanup_browser()
         if self.tool_call_context_helper:
             await self.tool_call_context_helper.cleanup_tools()
-        if self.tool_call_context_helper.mcp:
-            await self.tool_call_context_helper.mcp.disconnect_all()
         logger.info(f"✨ Cleanup complete for agent '{self.name}'.")

@@ -51,7 +51,7 @@ class ToolCallContextHelper:
 
     def __init__(self, agent: "BaseAgent"):
         self.agent = agent
-        self.mcp = MCPToolCallSandboxHost()
+        self.mcp = MCPToolCallSandboxHost(agent.task_id)
 
     async def add_tool(self, tool: BaseTool) -> None:
         """Add a new tool to the available tools collection."""
@@ -334,6 +334,9 @@ class ToolCallContextHelper:
                     logger.error(
                         f"🚨 Error cleaning up tool '{tool_name}': {e}", exc_info=True
                     )
+        if self.mcp:
+            await self.mcp.cleanup()
+            logger.info("🧼 Cleanup complete for MCP sandbox")
 
 
 class ToolCallAgent(ReActAgent):
