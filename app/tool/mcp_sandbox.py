@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 import docker
 import docker.errors as docker_errors
+import docker.types as docker_types
 from docker.models.containers import Container
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
@@ -31,8 +32,8 @@ class MCPToolCallSandboxHost:
     """
 
     def __init__(self, task_id: str):
-        self.task_id = task_id.replace("/", "-")
-        self.container_name = f"openmanus-mcp-sandbox-{self.task_id}"
+        self.task_id = task_id
+        self.container_name = f"openmanus-mcp-sandbox-{task_id.replace('/', '-')}"
         self.clients: Dict[str, MCPSandboxClients] = {}
         self.containers: Dict[str, bool] = {}  # key: container_name, value: is_created
         self.sandbox_initialized: bool = False
@@ -56,15 +57,23 @@ class MCPToolCallSandboxHost:
             # container not found, create new container
             logger.info(f"Creating new persistent container: {self.container_name}")
 
+            orgnization_id = self.task_id.split("/")[0]
+
             # prepare container config
             host_config = self.docker.api.create_host_config(
                 mem_limit="2g",  # set memory limit
                 cpu_period=100000,
                 cpu_quota=100000,  # set cpu limit
                 network_mode="bridge",
+                pids_limit=100,
+                ulimits=[docker_types.Ulimit(name="nofile", soft=1024, hard=2048)],
+                read_only=True,
+                cap_drop=["ALL"],
+                security_opt=["no-new-privileges"],
+                tmpfs={"/tmp": "size=512m,mode=1777", "/var/run": "size=64m,mode=1777"},
                 binds={
-                    str(config.host_workspace_root): {
-                        "bind": "/workspace",
+                    str(f"{config.host_workspace_root}/{orgnization_id}"): {
+                        "bind": f"/workspace/{orgnization_id}",
                         "mode": "rw",
                     },
                     "openmanus-pip-cache": {"bind": "/root/.cache/pip", "mode": "rw"},
