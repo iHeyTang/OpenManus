@@ -78,6 +78,10 @@ class MCPToolCallSandboxHost:
                     },
                     "openmanus-pip-cache": {"bind": "/root/.cache/pip", "mode": "rw"},
                     "openmanus-uv-cache": {"bind": "/root/.cache/uv", "mode": "rw"},
+                    "openmanus-uv-tools": {
+                        "bind": "/root/.local/share/uv/tools",
+                        "mode": "rw",
+                    },
                     "openmanus-npm-cache": {"bind": "/root/.npm", "mode": "rw"},
                     "openmanus-yarn-cache": {
                         "bind": "/usr/local/share/.cache/yarn",
