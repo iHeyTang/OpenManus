@@ -1,23 +1,20 @@
 import base64
-import hashlib
 import io
 import json
 import os
 import time
-from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 from PIL import Image
-from pydantic import Field, model_validator
 
-from app.agent.toolcall import ToolCallAgent, ToolCallAgentEvents, ToolCallContextHelper
 from app.config import config
+from app.context.toolcall import ToolCallAgentEvents
 from app.logger import logger
-from app.prompt.browser import NEXT_STEP_PROMPT, SYSTEM_PROMPT
-from app.schema import Message, ToolChoice
-from app.tool import BrowserUseTool, Terminate, ToolCollection
+from app.prompt.browser import NEXT_STEP_PROMPT
+from app.schema import Message
+from app.tool import BrowserUseTool
 
 # Avoid circular import if BrowserAgent needs BrowserContextHelper
 if TYPE_CHECKING:
@@ -158,55 +155,6 @@ class BrowserContextHelper:
         )
         if browser_tool and hasattr(browser_tool, "cleanup"):
             await browser_tool.cleanup()
-
-
-class BrowserAgent(ToolCallAgent):
-    """
-    A browser agent that uses the browser_use library to control a browser.
-
-    This agent can navigate web pages, interact with elements, fill forms,
-    extract content, and perform other browser-based actions to accomplish tasks.
-    """
-
-    name: str = "browser"
-    description: str = "A browser agent that can control a browser to accomplish tasks"
-
-    system_prompt: str = SYSTEM_PROMPT
-    next_step_prompt: str = NEXT_STEP_PROMPT
-
-    max_steps: int = 20
-
-    # Use Auto for tool choice to allow both tool usage and free-form responses
-    tool_choices: ToolChoice = ToolChoice.AUTO
-    special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
-
-    browser_context_helper: Optional[BrowserContextHelper] = None
-    tool_call_context_helper: Optional[ToolCallContextHelper] = None
-
-    @model_validator(mode="after")
-    def initialize_helper(self) -> "BrowserAgent":
-        self.browser_context_helper = BrowserContextHelper(self)
-        self.tool_call_context_helper = ToolCallContextHelper(self)
-        # Configure the available tools
-        self.tool_call_context_helper.available_tools = ToolCollection(
-            BrowserUseTool(), Terminate()
-        )
-        self.next_step_prompt = NEXT_STEP_PROMPT.format(
-            language=self.language or "English",
-        )
-        return self
-
-    async def think(self) -> bool:
-        """Process current state and decide next actions using tools, with browser state info added"""
-        self.emit(BrowserAgentEvents.BROWSER_BROWSER_USE_START, {})
-        self.next_step_prompt = (
-            await self.browser_context_helper.format_next_step_prompt()
-        )
-        return await super().think()
-
-    async def cleanup(self):
-        """Clean up browser agent resources by calling parent cleanup."""
-        await self.browser_context_helper.cleanup_browser()
 
 
 def calculate_image_similarity(

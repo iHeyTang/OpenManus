@@ -1,11 +1,8 @@
 import asyncio
 import json
-from typing import TYPE_CHECKING, Any, List, Optional
-
-from pydantic import model_validator
+from typing import TYPE_CHECKING, Any, List
 
 from app.agent.base import BaseAgent, BaseAgentEvents
-from app.agent.react import ReActAgent
 from app.exceptions import TokenLimitExceeded
 from app.logger import logger
 from app.schema import TOOL_CHOICE_TYPE, AgentState, Message, ToolCall, ToolChoice
@@ -344,56 +341,3 @@ class ToolCallContextHelper:
         if self.mcp:
             await self.mcp.cleanup()
             logger.info("🧼 Cleanup complete for MCP sandbox")
-
-
-class ToolCallAgent(ReActAgent):
-    """Base agent class for handling tool/function calls with enhanced abstraction"""
-
-    name: str = "toolcall"
-    description: str = "an agent that can execute tool calls."
-
-    tool_call_context_helper: Optional[ToolCallContextHelper] = None
-
-    @model_validator(mode="after")
-    def initialize_helper(self) -> "ToolCallAgent":
-        self.tool_call_context_helper = ToolCallContextHelper(self)
-        return self
-
-    async def think(self) -> bool:
-        """Process current state and decide next actions using tools"""
-        return await self.tool_call_context_helper.ask_tool()
-
-    async def act(self) -> str:
-        """Execute tool calls and handle their results"""
-        results = await self.tool_call_context_helper.execute_tool()
-        return "\n\n".join(results)
-
-    async def execute_tool(self, command: ToolCall) -> str:
-        """Execute a single tool call with robust error handling"""
-        return await self.tool_call_context_helper.execute_tool_command(command)
-
-    async def _handle_special_tool(self, name: str, result: Any, **kwargs):
-        """Handle special tool execution and state changes"""
-        return await self.tool_call_context_helper.handle_special_tool(
-            name=name, result=result, **kwargs
-        )
-
-    @staticmethod
-    def _should_finish_execution(**kwargs) -> bool:
-        """Determine if tool execution should finish the agent"""
-        return ToolCallContextHelper._should_finish_execution(**kwargs)
-
-    def _is_special_tool(self, name: str) -> bool:
-        """Check if tool name is in special tools list"""
-        return self.tool_call_context_helper._is_special_tool(name)
-
-    async def cleanup(self):
-        """Clean up resources used by the agent's tools."""
-        return await self.tool_call_context_helper.cleanup_tools()
-
-    async def run(self, request: Optional[str] = None) -> str:
-        """Run the agent with cleanup when done."""
-        try:
-            return await super().run(request)
-        finally:
-            await self.cleanup()
