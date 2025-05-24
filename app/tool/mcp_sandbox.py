@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import AsyncExitStack
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import docker
 import docker.errors as docker_errors
@@ -116,13 +116,14 @@ class MCPToolCallSandboxHost:
             await asyncio.to_thread(container.start)
 
     async def add_sse_client(
-        self, client_id: str, server_url: str
+        self, client_id: str, url: str, headers: Optional[dict[str, Any]] = None
     ) -> "MCPSandboxClients":
         """Add a new SSE-based MCP client connection running in a sandbox.
 
         Args:
             client_id: Unique identifier for the client
-            server_url: URL of the MCP server
+            url: URL of the MCP server
+            headers: Headers to send to the MCP server
 
         Returns:
             MCPSandboxClients: The newly created sandboxed client instance
@@ -136,7 +137,8 @@ class MCPToolCallSandboxHost:
         client = await MCPSandboxClients.connect_sse(
             client_id=client_id,
             host=self,
-            server_url=server_url,
+            server_url=url,
+            headers=headers,
         )
         self.clients[client_id] = client
         return client
@@ -303,7 +305,11 @@ class MCPSandboxClients(ToolCollection):
 
     @classmethod
     async def connect_sse(
-        cls, client_id: str, host: "MCPToolCallSandboxHost", server_url: str
+        cls,
+        client_id: str,
+        host: "MCPToolCallSandboxHost",
+        server_url: str,
+        headers: Optional[dict[str, Any]] = None,
     ) -> "MCPSandboxClients":
         """Connect to an MCP server using SSE transport."""
         inst = object.__new__(cls)
@@ -316,7 +322,9 @@ class MCPSandboxClients(ToolCollection):
 
         # Use AsyncExitStack to manage async context
         try:
-            s = await inst.exit_stack.enter_async_context(sse_client(url=server_url))
+            s = await inst.exit_stack.enter_async_context(
+                sse_client(url=server_url, headers=headers)
+            )
             inst.session = await inst.exit_stack.enter_async_context(ClientSession(*s))
         except Exception as e:
             logger.error(f"Error creating sse client {inst.client_id}: {e}")

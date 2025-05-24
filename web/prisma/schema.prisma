@@ -146,15 +146,20 @@ model InviteCodes {
 }
 
 model Tools {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?  @db.Text
-  command     String
-  args        Json     @default("[]")
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?  @db.Text
+  command       String
+  args          Json     @default("[]")
   /// [JSONSchema] JsonSchema
-  envSchema   Json     @default("{}")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  envSchema     Json     @default("{}")
+  url           String   @default("")
+  /// [JSONSchema] JsonSchema
+  querySchema   Json     @default("{}")
+  /// [JSONSchema] JsonSchema
+  headersSchema Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   organizationTools OrganizationTools[]
 
@@ -166,7 +171,11 @@ model OrganizationTools {
   id             String   @id @default(cuid())
   toolId         String
   organizationId String
+  // for stdio
   env            String?
+  // for sse
+  query          String?
+  headers        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

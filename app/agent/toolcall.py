@@ -59,8 +59,15 @@ class ToolCallContextHelper:
 
     async def add_mcp(self, tool: dict) -> None:
         """Add a new MCP client to the available tools collection."""
-        if isinstance(tool, dict) and "client_id" in tool and "server_url" in tool:
-            await self.mcp.add_sse_client(tool["client_id"], tool["server_url"])
+        if (
+            isinstance(tool, dict)
+            and "client_id" in tool
+            and "url" in tool
+            and tool["url"]
+        ):
+            await self.mcp.add_sse_client(
+                tool["client_id"], tool["url"], tool["headers"]
+            )
             client = self.mcp.get_client(tool["client_id"])
             if client:
                 for mcp_tool in client.tool_map.values():

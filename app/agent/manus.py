@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -39,9 +39,13 @@ SYSTEM_TOOLS_MAP = {tool.name: tool.__class__ for tool in SYSTEM_TOOLS}
 class McpToolConfig(BaseModel):
     id: str
     name: str
+    # for stdio
     command: str
     args: list[str]
     env: dict[str, str]
+    # for sse
+    url: str
+    headers: dict[str, Any]
 
 
 class Manus(ReActAgent):
@@ -147,9 +151,11 @@ class Manus(ReActAgent):
                     await self.tool_call_context_helper.add_mcp(
                         {
                             "client_id": tool.id,
+                            "url": tool.url,
                             "command": tool.command,
                             "args": tool.args,
                             "env": tool.env,
+                            "headers": tool.headers,
                         }
                     )
 

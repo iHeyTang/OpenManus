@@ -61,12 +61,18 @@ export const createTask = withUserAuth(async ({ organization, args }: AuthWrappe
     const orgTool = organizationTools.find(ot => ot.tool.id === tool);
     if (orgTool) {
       const env = orgTool.env ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.env, privateKey)) : {};
+      const query = orgTool.query ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.query, privateKey)) : {};
+      const fullUrl = buildMcpSseFullUrl(orgTool.tool.url, query);
+      const headers = orgTool.headers ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.headers, privateKey)) : {};
+
       return JSON.stringify({
         id: orgTool.tool.id,
         name: orgTool.tool.name,
         command: orgTool.tool.command,
         args: orgTool.tool.args,
         env: env,
+        url: fullUrl,
+        headers: headers,
       });
     }
     return tool;
@@ -347,3 +353,24 @@ async function handleTaskEvents(taskId: string, outId: string, organizationId: s
     reader.releaseLock();
   }
 }
+
+/**
+ * Build full url for MCP SSE
+ *
+ * url is stored in the config of the tool schema
+ * query is stored in the tool
+ * so we need to build the full url with query parameters
+ *
+ * @param url - The base URL
+ * @param query - The query parameters
+ * @returns The full URL with query parameters
+ */
+const buildMcpSseFullUrl = (url: string, query: Record<string, string>) => {
+  if (!url) return '';
+  let fullUrl = url;
+  if (Object.keys(query).length > 0) {
+    const queryParams = new URLSearchParams(query);
+    fullUrl = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}${queryParams.toString()}`;
+  }
+  return fullUrl;
+};
