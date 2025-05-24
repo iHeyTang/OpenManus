@@ -19,7 +19,7 @@ def sandbox_config():
 @pytest_asyncio.fixture(scope="module")
 async def sandbox(sandbox_config):
     """Creates and manages a test sandbox instance."""
-    sandbox = DockerSandbox(sandbox_config)
+    sandbox = DockerSandbox(config=sandbox_config)
     await sandbox.create()
     try:
         yield sandbox
@@ -120,7 +120,7 @@ async def test_sandbox_network_access(sandbox):
 @pytest.mark.asyncio
 async def test_sandbox_cleanup(sandbox_config):
     """Tests sandbox cleanup process."""
-    sandbox = DockerSandbox(sandbox_config)
+    sandbox = DockerSandbox(config=sandbox_config)
     await sandbox.create()
 
     # Create test files
@@ -143,7 +143,7 @@ async def test_sandbox_error_handling():
     # Test invalid configuration
     invalid_config = SandboxSettings(image="nonexistent:latest", work_dir="/invalid")
 
-    sandbox = DockerSandbox(invalid_config)
+    sandbox = DockerSandbox(config=invalid_config)
     with pytest.raises(Exception):
         await sandbox.create()
 

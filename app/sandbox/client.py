@@ -1,7 +1,10 @@
+import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Protocol
+from typing import Dict, Optional, Protocol, cast
 
 from app.config import SandboxSettings
+from app.logger import logger
+from app.sandbox.core.manager import SandboxManager as CoreSandboxManager
 from app.sandbox.core.sandbox import DockerSandbox
 
 
@@ -104,7 +107,7 @@ class LocalSandboxClient(BaseSandboxClient):
         Raises:
             RuntimeError: If sandbox creation fails.
         """
-        self.sandbox = DockerSandbox(config, volume_bindings)
+        self.sandbox = DockerSandbox(config=config, volume_bindings=volume_bindings)
         await self.sandbox.create()
 
     async def run_command(self, command: str, timeout: Optional[int] = None) -> str:
@@ -199,3 +202,69 @@ def create_sandbox_client() -> LocalSandboxClient:
 
 
 SANDBOX_CLIENT = create_sandbox_client()
+
+
+class SandBoxManager(CoreSandboxManager):
+    """Sandbox manager"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def create_sandbox(
+        self,
+        sandbox_id: str,
+        volume_bindings: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """ensure container exists, if not, create it"""
+
+        # check if container exists
+        try:
+            c: DockerSandbox = await self.get_sandbox(sandbox_id)
+        except Exception as e:
+            logger.error(f"Error getting sandbox: {e}")
+            c = None
+
+        if c != None:
+            # container exists, start it if not running
+            if c.container.status != "running" and c.container.status != "created":
+                await asyncio.to_thread(c.container.start)
+
+        # container not found, create new container
+        logger.info(f"Creating new persistent container: {sandbox_id}")
+
+        # prepare container config
+        await super().create_sandbox(
+            sandbox_id=sandbox_id,
+            config=SandboxSettings(
+                memory_limit="2g",
+                cpu_limit=1.0,
+                network_enabled=True,
+                work_dir="/workspace",
+            ),
+            volume_bindings={
+                "openmanus-pip-cache": "/root/.cache/pip",
+                "openmanus-uv-cache": "/root/.cache/uv",
+                "openmanus-deno-cache": "/root/.cache/deno",
+                "openmanus-uv-tools": "/root/.local/share/uv/tools",
+                "openmanus-npm-cache": "/root/.npm",
+                "openmanus-yarn-cache": "/usr/local/share/.cache/yarn",
+                **volume_bindings,
+            },
+            environment={
+                "PYTHONUNBUFFERED": "1",
+                "TERM": "dumb",
+                "PS1": "$ ",
+                "PROMPT_COMMAND": "",
+                "UV_INDEX_URL": "https://mirrors.aliyun.com/pypi/simple/",
+                "NPM_REGISTRY": "https://registry.npmmirror.com",
+            },
+            # pids_limit=100,
+            # ulimits=[docker_types.Ulimit(name="nofile", soft=1024, hard=2048)],
+            # read_only=True,
+            # cap_drop=["ALL"],
+            # security_opt=["no-new-privileges"],
+            # tmpfs={"/tmp": "size=512m,mode=1777", "/var/run": "size=64m,mode=1777"},
+        )
+
+
+SANDBOX_MANAGER = SandBoxManager()

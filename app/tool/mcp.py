@@ -1,11 +1,6 @@
-import asyncio
 from contextlib import AsyncExitStack
 from typing import Any, Dict, List, Optional
 
-import docker
-import docker.errors as docker_errors
-import docker.types as docker_types
-from docker.models.containers import Container
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
@@ -13,10 +8,10 @@ from mcp.types import TextContent
 
 from app.config import config
 from app.logger import logger
+from app.sandbox.client import SANDBOX_MANAGER
+from app.sandbox.core.sandbox import DockerSandbox
 from app.tool.base import BaseTool, ToolResult
 from app.tool.tool_collection import ToolCollection
-
-GENERAL_SANDBOX_IMAGE_NAME: str = "iheytang/openmanus-sandbox:latest"
 
 
 class MCPToolCallHost:
@@ -31,101 +26,11 @@ class MCPToolCallHost:
     4. Managing sandbox containers for all clients
     """
 
-    def __init__(self, task_id: str):
+    def __init__(self, task_id: str, sandbox: DockerSandbox):
         self.task_id = task_id
-        self.container_name = f"openmanus-mcp-sandbox-{task_id.replace('/', '-')}"
         self.clients: Dict[str, MCPSandboxClients] = {}
         self.containers: Dict[str, bool] = {}  # key: container_name, value: is_created
-        self.sandbox_initialized: bool = False
-        self.docker = docker.from_env()
-
-    async def initialize(self) -> None:
-        """initialize sandbox host"""
-        if not self.sandbox_initialized:
-            self.sandbox_initialized = True
-            await self._ensure_container_exists()
-
-    async def _ensure_container_exists(self) -> None:
-        """ensure container exists, if not, create it"""
-
-        try:
-            # check if container exists
-            container = self.docker.containers.get(self.container_name)
-            if container.status != "running":
-                container.start()
-        except docker_errors.NotFound:
-            # container not found, create new container
-            logger.info(f"Creating new persistent container: {self.container_name}")
-
-            orgnization_id = self.task_id.split("/")[0]
-
-            # prepare container config
-            host_config = self.docker.api.create_host_config(
-                mem_limit="2g",  # set memory limit
-                cpu_period=100000,
-                cpu_quota=100000,  # set cpu limit
-                network_mode="bridge",
-                pids_limit=100,
-                ulimits=[docker_types.Ulimit(name="nofile", soft=1024, hard=2048)],
-                read_only=True,
-                cap_drop=["ALL"],
-                security_opt=["no-new-privileges"],
-                tmpfs={"/tmp": "size=512m,mode=1777", "/var/run": "size=64m,mode=1777"},
-                binds={
-                    str(f"{config.host_workspace_root}/{orgnization_id}"): {
-                        "bind": f"/workspace/{orgnization_id}",
-                        "mode": "rw",
-                    },
-                    str(f"{config.host_workspace_root}/{orgnization_id}"): {
-                        "bind": f"/workspace",
-                        "mode": "rw",
-                    },
-                    "openmanus-pip-cache": {"bind": "/root/.cache/pip", "mode": "rw"},
-                    "openmanus-uv-cache": {"bind": "/root/.cache/uv", "mode": "rw"},
-                    "openmanus-deno-cache": {"bind": "/root/.cache/deno", "mode": "rw"},
-                    "openmanus-uv-tools": {
-                        "bind": "/root/.local/share/uv/tools",
-                        "mode": "rw",
-                    },
-                    "openmanus-npm-cache": {"bind": "/root/.npm", "mode": "rw"},
-                    "openmanus-yarn-cache": {
-                        "bind": "/usr/local/share/.cache/yarn",
-                        "mode": "rw",
-                    },
-                },
-            )
-
-            # pull container if not exists
-            if not self.docker.images.list(name=GENERAL_SANDBOX_IMAGE_NAME):
-                logger.info(f"Pulling container: {GENERAL_SANDBOX_IMAGE_NAME}")
-                await asyncio.to_thread(
-                    self.docker.images.pull, GENERAL_SANDBOX_IMAGE_NAME
-                )
-
-            # create container
-            container: Container = await asyncio.to_thread(
-                self.docker.api.create_container,
-                image=GENERAL_SANDBOX_IMAGE_NAME,
-                command="tail -f /dev/null",  # keep container running
-                hostname="sandbox",
-                working_dir="/workspace",
-                host_config=host_config,
-                name=self.container_name,
-                tty=True,
-                detach=True,
-                environment={
-                    "PYTHONUNBUFFERED": "1",
-                    "TERM": "dumb",
-                    "PS1": "$ ",
-                    "PROMPT_COMMAND": "",
-                    "UV_INDEX_URL": "https://mirrors.aliyun.com/pypi/simple/",
-                    "NPM_REGISTRY": "https://registry.npmmirror.com",
-                },
-            )
-
-            # start container
-            container = self.docker.containers.get(container["Id"])
-            await asyncio.to_thread(container.start)
+        self.sandbox: DockerSandbox = sandbox
 
     async def add_sse_client(
         self, client_id: str, url: str, headers: Optional[dict[str, Any]] = None
@@ -229,10 +134,6 @@ class MCPToolCallHost:
     async def cleanup(self) -> None:
         """Cleanup all containers."""
         await self.disconnect_all()
-        container = self.docker.containers.get(self.container_name)
-        await asyncio.to_thread(container.stop)
-        await asyncio.to_thread(container.remove)
-        await asyncio.to_thread(self.docker.close)
 
     def list_clients(self) -> List[str]:
         """Get a list of all client IDs.
@@ -353,10 +254,8 @@ class MCPSandboxClients(ToolCollection):
             self.session = None
             self.tools = tuple()
             self.tool_map = {}
-            if self.container_name != self.host.container_name:
-                container = self.host.docker.containers.get(self.container_name)
-                await asyncio.to_thread(container.stop)
-                await asyncio.to_thread(container.remove)
+            if self.container_name != self.host.sandbox.id:
+                await SANDBOX_MANAGER.delete_sandbox(self.host.sandbox.id)
 
     async def _initialize_and_list_tools(self) -> None:
         """Initialize session and populate tool map."""
@@ -428,7 +327,7 @@ class MCPSandboxClients(ToolCollection):
 
             docker_args.extend(["-v", f"{config.host_workspace_root}:/workspace"])
             docker_args.extend([parameters.command, *parameters.args])
-            docker_args.extend([f"--name={self.get_container_name()}"])
+            docker_args.extend([f"--name={self.host.sandbox.id}"])
 
             return StdioServerParameters(
                 command=docker_command,
@@ -443,7 +342,7 @@ class MCPSandboxClients(ToolCollection):
             for key, value in parameters.env.items():
                 docker_args.extend(["-e", f"{key}={value}"])
 
-        docker_args.extend(["-i", self.get_container_name()])
+        docker_args.extend(["-i", self.host.sandbox.id])
         docker_args.extend(
             ["bash", "-c", " ".join([parameters.command, *parameters.args])]
         )
@@ -456,9 +355,9 @@ class MCPSandboxClients(ToolCollection):
     def get_container_name(self) -> str:
         """get container name"""
         if self.command_type == "docker":
-            return f"{self.host.container_name}-{self.client_id}"
+            return f"{self.host.sandbox.id}-{self.client_id}"
         else:
-            return self.host.container_name
+            return self.host.sandbox.id
 
 
 class MCPSandboxClientTool(BaseTool):

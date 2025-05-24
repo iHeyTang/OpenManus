@@ -31,8 +31,10 @@ class DockerSandbox:
 
     def __init__(
         self,
+        id: Optional[str] = None,
         config: Optional[SandboxSettings] = None,
         volume_bindings: Optional[Dict[str, str]] = None,
+        environment: Optional[Dict[str, str]] = None,
     ):
         """Initializes a sandbox instance.
 
@@ -40,11 +42,13 @@ class DockerSandbox:
             config: Sandbox configuration. Default configuration used if None.
             volume_bindings: Volume mappings in {host_path: container_path} format.
         """
+        self.id = id
         self.config = config or SandboxSettings()
         self.volume_bindings = volume_bindings or {}
         self.client = docker.from_env()
         self.container: Optional[Container] = None
         self.terminal: Optional[AsyncDockerizedTerminal] = None
+        self.environment = environment or {}
 
     async def create(self) -> "DockerSandbox":
         """Creates and starts the sandbox container.
@@ -67,7 +71,7 @@ class DockerSandbox:
             )
 
             # Generate unique container name with sandbox_ prefix
-            container_name = f"sandbox_{uuid.uuid4().hex[:8]}"
+            container_name = self.id or f"sandbox_{uuid.uuid4().hex[:8]}"
 
             # Create container
             container = await asyncio.to_thread(
@@ -80,6 +84,7 @@ class DockerSandbox:
                 name=container_name,
                 tty=True,
                 detach=True,
+                environment=self.environment,
             )
 
             self.container = self.client.containers.get(container["Id"])
@@ -91,7 +96,7 @@ class DockerSandbox:
             self.terminal = AsyncDockerizedTerminal(
                 container["Id"],
                 self.config.work_dir,
-                env_vars={"PYTHONUNBUFFERED": "1"}
+                env_vars={"PYTHONUNBUFFERED": "1"},
                 # Ensure Python output is not buffered
             )
             await self.terminal.init()
@@ -109,10 +114,6 @@ class DockerSandbox:
             Volume binding configuration dictionary.
         """
         bindings = {}
-
-        # Create and add working directory mapping
-        work_dir = self._ensure_host_dir(self.config.work_dir)
-        bindings[work_dir] = {"bind": self.config.work_dir, "mode": "rw"}
 
         # Add custom volume bindings
         for host_path, container_path in self.volume_bindings.items():

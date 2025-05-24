@@ -51,7 +51,7 @@ class ToolCallContextHelper:
 
     def __init__(self, agent: "BaseAgent"):
         self.agent = agent
-        self.mcp = MCPToolCallHost(agent.task_id)
+        self.mcp = MCPToolCallHost(agent.task_id, agent.sandbox)
 
     async def add_tool(self, tool: BaseTool) -> None:
         """Add a new tool to the available tools collection."""
