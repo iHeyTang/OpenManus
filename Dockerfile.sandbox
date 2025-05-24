@@ -1,10 +1,15 @@
 FROM python:3.12-slim
 
-# Install Node.js 20.x and clean all temporary files
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    # Install curl, ca-certificates and unzip
+    && apt-get install -y --no-install-recommends curl ca-certificates unzip \
+    # Install Node.js 20.x
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
+    # Install Deno
+    && curl -fsSL https://deno.land/install.sh | sh \
+    && ln -s /root/.deno/bin/deno /usr/local/bin/deno \
+    # Clean up
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -22,5 +27,6 @@ ENV NODE_ENV=development
 RUN python --version
 RUN node --version
 RUN npm --version
+RUN deno --version
 
 CMD ["bash"]

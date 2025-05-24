@@ -76,8 +76,13 @@ class MCPToolCallSandboxHost:
                         "bind": f"/workspace/{orgnization_id}",
                         "mode": "rw",
                     },
+                    str(f"{config.host_workspace_root}/{orgnization_id}"): {
+                        "bind": f"/workspace",
+                        "mode": "rw",
+                    },
                     "openmanus-pip-cache": {"bind": "/root/.cache/pip", "mode": "rw"},
                     "openmanus-uv-cache": {"bind": "/root/.cache/uv", "mode": "rw"},
+                    "openmanus-deno-cache": {"bind": "/root/.cache/deno", "mode": "rw"},
                     "openmanus-uv-tools": {
                         "bind": "/root/.local/share/uv/tools",
                         "mode": "rw",
@@ -435,7 +440,7 @@ class MCPSandboxClients(ToolCollection):
         docker_args.extend(
             ["bash", "-c", " ".join([parameters.command, *parameters.args])]
         )
-
+        print(f"docker_args: {' '.join(docker_args)}")
         return StdioServerParameters(
             command=docker_command,
             args=docker_args,
@@ -483,6 +488,8 @@ def get_command_type(command: str) -> str:
         return "uvx"
     elif command.startswith("npx"):
         return "npx"
+    elif command.startswith("deno"):
+        return "deno"
     elif command.startswith("docker"):
         return "docker"
     else:
