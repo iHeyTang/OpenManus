@@ -11,7 +11,7 @@ from app.logger import logger
 from app.schema import TOOL_CHOICE_TYPE, AgentState, Message, ToolCall, ToolChoice
 from app.tool import CreateChatCompletion, Terminate, ToolCollection
 from app.tool.base import BaseTool
-from app.tool.mcp_sandbox import MCPToolCallSandboxHost
+from app.tool.mcp import MCPToolCallHost
 
 # Avoid circular import if BrowserAgent needs BrowserContextHelper
 if TYPE_CHECKING:
@@ -40,7 +40,7 @@ class ToolCallContextHelper:
         CreateChatCompletion(), Terminate()
     )
 
-    mcp: MCPToolCallSandboxHost = None
+    mcp: MCPToolCallHost = None
 
     tool_choices: TOOL_CHOICE_TYPE = ToolChoice.AUTO  # type: ignore
     special_tool_names: List[str] = [Terminate().name]
@@ -51,7 +51,7 @@ class ToolCallContextHelper:
 
     def __init__(self, agent: "BaseAgent"):
         self.agent = agent
-        self.mcp = MCPToolCallSandboxHost(agent.task_id)
+        self.mcp = MCPToolCallHost(agent.task_id)
 
     async def add_tool(self, tool: BaseTool) -> None:
         """Add a new tool to the available tools collection."""
