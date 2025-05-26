@@ -15,3 +15,7 @@ class SandboxTimeoutError(SandboxError):
 
 class SandboxResourceError(SandboxError):
     """Exception raised for resource-related errors."""
+
+
+class SandboxNotFoundError(SandboxError):
+    """Exception raised when a sandbox is not found."""

@@ -8,6 +8,7 @@ from docker.errors import APIError, ImageNotFound
 
 from app.config import SandboxSettings
 from app.logger import logger
+from app.sandbox.core.exceptions import SandboxNotFoundError
 from app.sandbox.core.sandbox import DockerSandbox
 
 
@@ -99,7 +100,7 @@ class SandboxManager:
 
         async with self._locks[sandbox_id]:
             if sandbox_id not in self._sandboxes:
-                raise KeyError(f"Sandbox {sandbox_id} not found")
+                raise SandboxNotFoundError(f"Sandbox {sandbox_id} not found")
 
             self._active_operations.add(sandbox_id)
             try:

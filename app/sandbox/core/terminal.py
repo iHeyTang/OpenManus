@@ -11,6 +11,7 @@ import socket
 from typing import Dict, Optional, Tuple, Union
 
 import docker
+import docker.transport.npipesocket
 from docker import APIClient
 from docker.errors import APIError
 from docker.models.containers import Container
@@ -26,7 +27,7 @@ class DockerSession:
         self.api = APIClient()
         self.container_id = container_id
         self.exec_id = None
-        self.socket = None
+        self.socket: Optional[socket.socket] = None
 
     async def create(self, working_dir: str, env_vars: Dict[str, str]) -> None:
         """Creates an interactive session with the container.
@@ -64,11 +65,36 @@ class DockerSession:
             self.exec_id, socket=True, tty=True, stream=True, demux=True
         )
 
-        if hasattr(socket_data, "_sock"):
+        if isinstance(socket_data, docker.transport.npipesocket.NpipeSocket):
+            # If Windows, socket_data is already a NpipeSocket object
+            self.socket = socket_data
+        elif hasattr(socket_data, "_sock"):
             self.socket = socket_data._sock
-            self.socket.setblocking(False)
+        elif hasattr(socket_data, "raw"):
+            self.socket = socket_data.raw
+        elif hasattr(socket_data, "socket"):
+            self.socket = socket_data.socket
         else:
-            raise RuntimeError("Failed to get socket connection")
+            raise RuntimeError(
+                f"Failed to get socket connection. Socket data type: {type(socket_data)}, "
+                f"attributes: {dir(socket_data)}"
+            )
+
+        if not self.socket:
+            raise RuntimeError("No socket connection available")
+
+        # set socket to non-blocking mode
+        try:
+            self.socket.setblocking(False)
+        except Exception as e:
+            # Some Windows environments may not support setblocking
+            # In this case, we use settimeout as a fallback
+            try:
+                self.socket.settimeout(0)
+            except Exception as e2:
+                raise RuntimeError(
+                    f"Failed to set socket to non-blocking mode: {e}, {e2}"
+                )
 
         await self._read_until_prompt()
 

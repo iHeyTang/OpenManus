@@ -4,6 +4,7 @@ from typing import Dict, Optional, Protocol, cast
 
 from app.config import SandboxSettings
 from app.logger import logger
+from app.sandbox.core.exceptions import SandboxNotFoundError
 from app.sandbox.core.manager import SandboxManager as CoreSandboxManager
 from app.sandbox.core.sandbox import DockerSandbox
 
@@ -220,8 +221,7 @@ class SandBoxManager(CoreSandboxManager):
         # check if container exists
         try:
             c: DockerSandbox = await self.get_sandbox(sandbox_id)
-        except Exception as e:
-            logger.error(f"Error getting sandbox: {e}")
+        except SandboxNotFoundError:
             c = None
 
         if c != None:
