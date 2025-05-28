@@ -8,13 +8,20 @@ allowing interactive command execution with timeout control.
 import asyncio
 import re
 import socket
+import sys
 from typing import Dict, Optional, Tuple, Union
 
 import docker
-import docker.transport.npipesocket
 from docker import APIClient
 from docker.errors import APIError
 from docker.models.containers import Container
+
+if sys.platform == "win32":
+    import docker.transport.npipesocket
+
+    NpipeSocket = docker.transport.npipesocket.NpipeSocket
+else:
+    NpipeSocket = type(None)
 
 
 class DockerSession:
@@ -65,7 +72,7 @@ class DockerSession:
             self.exec_id, socket=True, tty=True, stream=True, demux=True
         )
 
-        if isinstance(socket_data, docker.transport.npipesocket.NpipeSocket):
+        if socket_data is not None and isinstance(socket_data, NpipeSocket):
             # If Windows, socket_data is already a NpipeSocket object
             self.socket = socket_data
         elif hasattr(socket_data, "_sock"):
