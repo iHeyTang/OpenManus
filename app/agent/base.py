@@ -315,7 +315,6 @@ class BaseAgent(BaseModel, ABC):
             host_workspace_root = str(f"{config.host_workspace_root}/{orgnization_id}")
             volume_bindings = {
                 host_workspace_root: f"/workspace/{orgnization_id}",
-                host_workspace_root: f"/workspace",
             }
 
             await SANDBOX_MANAGER.create_sandbox(

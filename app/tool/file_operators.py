@@ -1,141 +1,122 @@
-"""File operation interfaces and implementations for local and sandbox environments."""
+"""File operation interfaces and implementations."""
 
-import asyncio
-from pathlib import Path
-from typing import Optional, Protocol, Tuple, runtime_checkable
+from typing import Literal, Optional, Tuple
 
-from app.config import SandboxSettings, config
 from app.exceptions import ToolError
-from app.sandbox.core.sandbox import DockerSandbox
-from app.workspace import PathLike, resolve_path
+from app.tool.base import BaseTool, CLIResult, ToolResult
+from app.workspace import PathLike
+
+_FILE_OPERATOR_DESCRIPTION = """A tool for performing file operations.
+Provides functionality for reading, writing, and checking file properties."""
 
 
-@runtime_checkable
-class FileOperator(Protocol):
-    """Interface for file operations in different environments."""
+class FileOperator(BaseTool):
+    """File operations implementation"""
 
-    async def read_file(self, path: PathLike) -> str:
-        """Read content from a file."""
-        ...
+    name: str = "file_operator"
+    description: str = _FILE_OPERATOR_DESCRIPTION
+    parameters: dict = {
+        "type": "object",
+        "properties": {
+            "command": {
+                "type": "string",
+                "description": "The file operation command to execute.",
+                "enum": ["read", "write", "is_directory", "exists", "run_command"],
+            },
+            "path": {
+                "type": "string",
+                "description": "The path to the file or directory to operate on.",
+            },
+            "content": {
+                "type": "string",
+                "description": "The content to write to the file. Required for 'write' command.",
+            },
+            "cmd": {
+                "type": "string",
+                "description": "The command to run. Required for 'run_command' command.",
+            },
+            "timeout": {
+                "type": "number",
+                "description": "Timeout in seconds for command execution. Optional for 'run_command' command.",
+            },
+        },
+        "required": ["command", "path"],
+    }
 
-    async def write_file(self, path: PathLike, content: str) -> None:
-        """Write content to a file."""
-        ...
-
-    async def is_directory(self, path: PathLike) -> bool:
-        """Check if path points to a directory."""
-        ...
-
-    async def exists(self, path: PathLike) -> bool:
-        """Check if path exists."""
-        ...
-
-    async def run_command(
-        self, cmd: str, timeout: Optional[float] = 120.0
-    ) -> Tuple[int, str, str]:
-        """Run a shell command and return (return_code, stdout, stderr)."""
-        ...
-
-
-class LocalFileOperator(FileOperator):
-    """File operations implementation for local filesystem."""
-
-    encoding: str = "utf-8"
-    base_path: Path = config.workspace_root
-
-    async def read_file(self, path: PathLike) -> str:
-        """Read content from a local file."""
+    async def execute(
+        self,
+        *,
+        command: Literal["read", "write", "is_directory", "exists", "run_command"],
+        path: str,
+        content: Optional[str] = None,
+        cmd: Optional[str] = None,
+        timeout: Optional[float] = None,
+        **kwargs,
+    ) -> ToolResult:
+        """Execute a file operation command."""
         try:
-            resolved_path = resolve_path(path)
-            return resolved_path.read_text(encoding=self.encoding)
+            if command == "read":
+                result = await self._read_file(path)
+                return ToolResult(output=result)
+            elif command == "write":
+                if content is None:
+                    raise ToolError(
+                        "Parameter 'content' is required for 'write' command"
+                    )
+                await self._write_file(path, content)
+                return ToolResult(output=f"Successfully wrote to {path}")
+            elif command == "is_directory":
+                result = await self._is_directory(path)
+                return ToolResult(output=str(result))
+            elif command == "exists":
+                result = await self._exists(path)
+                return ToolResult(output=str(result))
+            elif command == "run_command":
+                if cmd is None:
+                    raise ToolError(
+                        "Parameter 'cmd' is required for 'run_command' command"
+                    )
+                returncode, stdout, stderr = await self._run_command(cmd, timeout)
+                return CLIResult(output=stdout, error=stderr)
+            else:
+                raise ToolError(f"Unrecognized command: {command}")
+        except Exception as e:
+            return ToolResult(error=str(e))
+
+    async def _read_file(self, path: PathLike) -> str:
+        """Read content from a file."""
+        try:
+            return await self.sandbox.read_file(str(path))
         except Exception as e:
             raise ToolError(f"Failed to read {path}: {str(e)}") from None
 
-    async def write_file(self, path: PathLike, content: str) -> None:
-        """Write content to a local file."""
+    async def _write_file(self, path: PathLike, content: str) -> None:
+        """Write content to a file."""
         try:
-            resolved_path = resolve_path(path)
-            resolved_path.write_text(content, encoding=self.encoding)
+            await self.sandbox.write_file(str(path), content)
         except Exception as e:
             raise ToolError(f"Failed to write to {path}: {str(e)}") from None
 
-    async def is_directory(self, path: PathLike) -> bool:
+    async def _is_directory(self, path: PathLike) -> bool:
         """Check if path points to a directory."""
-        resolved_path = resolve_path(path)
-        return resolved_path.is_dir()
-
-    async def exists(self, path: PathLike) -> bool:
-        """Check if path exists."""
-        resolved_path = resolve_path(path)
-        return resolved_path.exists()
-
-    async def run_command(
-        self, cmd: str, timeout: Optional[float] = 120.0
-    ) -> Tuple[int, str, str]:
-        """Run a shell command locally."""
-        process = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
-
-        try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=timeout
-            )
-            return (
-                process.returncode or 0,
-                stdout.decode(),
-                stderr.decode(),
-            )
-        except asyncio.TimeoutError as exc:
-            try:
-                process.kill()
-            except ProcessLookupError:
-                pass
-            raise TimeoutError(
-                f"Command '{cmd}' timed out after {timeout} seconds"
-            ) from exc
-
-
-class SandboxFileOperator(FileOperator):
-    """File operations implementation for sandbox environment."""
-
-    def __init__(self, sandbox: DockerSandbox):
-        self.sandbox_client = sandbox
-
-    async def read_file(self, path: PathLike) -> str:
-        """Read content from a file in sandbox."""
-        try:
-            return await self.sandbox_client.read_file(str(path))
-        except Exception as e:
-            raise ToolError(f"Failed to read {path} in sandbox: {str(e)}") from None
-
-    async def write_file(self, path: PathLike, content: str) -> None:
-        """Write content to a file in sandbox."""
-        try:
-            await self.sandbox_client.write_file(str(path), content)
-        except Exception as e:
-            raise ToolError(f"Failed to write to {path} in sandbox: {str(e)}") from None
-
-    async def is_directory(self, path: PathLike) -> bool:
-        """Check if path points to a directory in sandbox."""
-        result = await self.sandbox_client.run_command(
+        result = await self.sandbox.run_command(
             f"test -d {path} && echo 'true' || echo 'false'"
         )
         return result.strip() == "true"
 
-    async def exists(self, path: PathLike) -> bool:
-        """Check if path exists in sandbox."""
-        result = await self.sandbox_client.run_command(
+    async def _exists(self, path: PathLike) -> bool:
+        """Check if path exists."""
+        result = await self.sandbox.run_command(
             f"test -e {path} && echo 'true' || echo 'false'"
         )
         return result.strip() == "true"
 
-    async def run_command(
+    async def _run_command(
         self, cmd: str, timeout: Optional[float] = 120.0
     ) -> Tuple[int, str, str]:
-        """Run a command in sandbox environment."""
+        """Run a command."""
         try:
-            stdout = await self.sandbox_client.run_command(
+            stdout = await self.sandbox.run_command(
                 cmd, timeout=int(timeout) if timeout else None
             )
             return (
@@ -145,7 +126,7 @@ class SandboxFileOperator(FileOperator):
             )
         except TimeoutError as exc:
             raise TimeoutError(
-                f"Command '{cmd}' timed out after {timeout} seconds in sandbox"
+                f"Command '{cmd}' timed out after {timeout} seconds"
             ) from exc
         except Exception as exc:
-            return 1, "", f"Error executing command in sandbox: {str(exc)}"
+            return 1, "", f"Error executing command: {str(exc)}"

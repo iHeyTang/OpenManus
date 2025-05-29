@@ -1,54 +1,12 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Protocol, cast
+from typing import Dict, Optional
 
 from app.config import SandboxSettings
 from app.logger import logger
 from app.sandbox.core.exceptions import SandboxNotFoundError
 from app.sandbox.core.manager import SandboxManager as CoreSandboxManager
 from app.sandbox.core.sandbox import DockerSandbox
-
-
-class SandboxFileOperations(Protocol):
-    """Protocol for sandbox file operations."""
-
-    async def copy_from(self, container_path: str, local_path: str) -> None:
-        """Copies file from container to local.
-
-        Args:
-            container_path: File path in container.
-            local_path: Local destination path.
-        """
-        ...
-
-    async def copy_to(self, local_path: str, container_path: str) -> None:
-        """Copies file from local to container.
-
-        Args:
-            local_path: Local source file path.
-            container_path: Destination path in container.
-        """
-        ...
-
-    async def read_file(self, path: str) -> str:
-        """Reads file content from container.
-
-        Args:
-            path: File path in container.
-
-        Returns:
-            str: File content.
-        """
-        ...
-
-    async def write_file(self, path: str, content: str) -> None:
-        """Writes content to file in container.
-
-        Args:
-            path: File path in container.
-            content: Content to write.
-        """
-        ...
 
 
 class BaseSandboxClient(ABC):

@@ -1,18 +1,12 @@
 """File and directory manipulation tool with sandbox support."""
 
 from collections import defaultdict
-from pathlib import Path
 from typing import Any, DefaultDict, List, Literal, Optional, get_args
 
 from app.exceptions import ToolError
 from app.tool import BaseTool
 from app.tool.base import CLIResult, ToolResult
-from app.tool.file_operators import (
-    FileOperator,
-    LocalFileOperator,
-    PathLike,
-    SandboxFileOperator,
-)
+from app.tool.file_operators import FileOperator, PathLike
 
 Command = Literal[
     "view",
@@ -55,7 +49,7 @@ def maybe_truncate(
     return content[:truncate_after] + TRUNCATED_MESSAGE
 
 
-class StrReplaceEditor(BaseTool):
+class StrReplaceEditor(FileOperator):
     """A tool for viewing, creating, and editing files with sandbox support."""
 
     name: str = "str_replace_editor"
@@ -97,15 +91,6 @@ class StrReplaceEditor(BaseTool):
         "required": ["command", "path"],
     }
     _file_history: DefaultDict[PathLike, List[str]] = defaultdict(list)
-    _local_operator: LocalFileOperator = LocalFileOperator()
-    _sandbox_operator: Optional[SandboxFileOperator] = None
-
-    # def _get_operator(self, use_sandbox: bool) -> FileOperator:
-    def _get_operator(self) -> FileOperator:
-        """Get the appropriate file operator based on execution mode."""
-        if self._sandbox_operator is None:
-            self._sandbox_operator = SandboxFileOperator(self.sandbox)
-        return self._sandbox_operator
 
     async def execute(
         self,
@@ -120,19 +105,16 @@ class StrReplaceEditor(BaseTool):
         **kwargs: Any,
     ) -> str:
         """Execute a file operation command."""
-        # Get the appropriate file operator
-        operator = self._get_operator()
-
         # Validate path and command combination
-        await self.validate_path(command, path, operator)
+        await self.validate_path(command, path)
 
         # Execute the appropriate command
         if command == "view":
-            result = await self.view(path, view_range, operator)
+            result = await self.view(path, view_range)
         elif command == "create":
             if file_text is None:
                 raise ToolError("Parameter `file_text` is required for command: create")
-            await operator.write_file(path, file_text)
+            await self._write_file(path, file_text)
             self._file_history[path].append(file_text)
             result = ToolResult(output=f"File created successfully at: {path}")
         elif command == "str_replace":
@@ -140,7 +122,7 @@ class StrReplaceEditor(BaseTool):
                 raise ToolError(
                     "Parameter `old_str` is required for command: str_replace"
                 )
-            result = await self.str_replace(path, old_str, new_str, operator)
+            result = await self.str_replace(path, old_str, new_str)
         elif command == "insert":
             if insert_line is None:
                 raise ToolError(
@@ -148,9 +130,9 @@ class StrReplaceEditor(BaseTool):
                 )
             if new_str is None:
                 raise ToolError("Parameter `new_str` is required for command: insert")
-            result = await self.insert(path, insert_line, new_str, operator)
+            result = await self.insert(path, insert_line, new_str)
         elif command == "undo_edit":
-            result = await self.undo_edit(path, operator)
+            result = await self.undo_edit(path)
         else:
             # This should be caught by type checking, but we include it for safety
             raise ToolError(
@@ -159,23 +141,21 @@ class StrReplaceEditor(BaseTool):
 
         return str(result)
 
-    async def validate_path(
-        self, command: str, path: str, operator: FileOperator
-    ) -> None:
-        """Validate path and command combination based on execution environment."""
+    async def validate_path(self, command: str, path: str) -> None:
+        """Validate path and command combination."""
         # Check if path is absolute
         if not path.startswith("/workspace"):
             raise ToolError(f"The path {path} is not a valid path")
 
         # Only check if path exists for non-create commands
         if command != "create":
-            if not await operator.exists(path):
+            if not await self._exists(path):
                 raise ToolError(
                     f"The path {path} does not exist. Please provide a valid path."
                 )
 
             # Check if path is a directory
-            is_dir = await operator.is_directory(path)
+            is_dir = await self._is_directory(path)
             if is_dir and command != "view":
                 raise ToolError(
                     f"The path {path} is a directory and only the `view` command can be used on directories"
@@ -183,7 +163,7 @@ class StrReplaceEditor(BaseTool):
 
         # Check if file exists for create command
         elif command == "create":
-            exists = await operator.exists(path)
+            exists = await self._exists(path)
             if exists:
                 raise ToolError(
                     f"File already exists at: {path}. Cannot overwrite files using command `create`."
@@ -193,11 +173,10 @@ class StrReplaceEditor(BaseTool):
         self,
         path: PathLike,
         view_range: Optional[List[int]] = None,
-        operator: FileOperator = None,
     ) -> CLIResult:
         """Display file or directory content."""
         # Determine if path is a directory
-        is_dir = await operator.is_directory(path)
+        is_dir = await self._is_directory(path)
 
         if is_dir:
             # Directory handling
@@ -206,18 +185,17 @@ class StrReplaceEditor(BaseTool):
                     "The `view_range` parameter is not allowed when `path` points to a directory."
                 )
 
-            return await self._view_directory(path, operator)
+            return await self._view_directory(path)
         else:
             # File handling
-            return await self._view_file(path, operator, view_range)
+            return await self._view_file(path, view_range)
 
-    @staticmethod
-    async def _view_directory(path: PathLike, operator: FileOperator) -> CLIResult:
+    async def _view_directory(self, path: PathLike) -> CLIResult:
         """Display directory contents."""
         find_cmd = f"find {path} -maxdepth 2 -not -path '*/\\.*'"
 
         # Execute command using the operator
-        returncode, stdout, stderr = await operator.run_command(find_cmd)
+        returncode, stdout, stderr = await self._run_command(find_cmd)
 
         if not stderr:
             stdout = (
@@ -230,12 +208,11 @@ class StrReplaceEditor(BaseTool):
     async def _view_file(
         self,
         path: PathLike,
-        operator: FileOperator,
         view_range: Optional[List[int]] = None,
     ) -> CLIResult:
         """Display file content, optionally within a specified line range."""
         # Read file content
-        file_content = await operator.read_file(path)
+        file_content = await self._read_file(path)
         init_line = 1
 
         # Apply view range if specified
@@ -282,11 +259,10 @@ class StrReplaceEditor(BaseTool):
         path: PathLike,
         old_str: str,
         new_str: Optional[str] = None,
-        operator: FileOperator = None,
     ) -> CLIResult:
         """Replace a unique string in a file with a new string."""
         # Read file content and expand tabs
-        file_content = (await operator.read_file(path)).expandtabs()
+        file_content = (await self._read_file(path)).expandtabs()
         old_str = old_str.expandtabs()
         new_str = new_str.expandtabs() if new_str is not None else ""
 
@@ -313,7 +289,7 @@ class StrReplaceEditor(BaseTool):
         new_file_content = file_content.replace(old_str, new_str)
 
         # Write the new content to the file
-        await operator.write_file(path, new_file_content)
+        await self._write_file(path, new_file_content)
 
         # Save the original content to history
         self._file_history[path].append(file_content)
@@ -338,11 +314,10 @@ class StrReplaceEditor(BaseTool):
         path: PathLike,
         insert_line: int,
         new_str: str,
-        operator: FileOperator = None,
     ) -> CLIResult:
         """Insert text at a specific line in a file."""
         # Read and prepare content
-        file_text = (await operator.read_file(path)).expandtabs()
+        file_text = (await self._read_file(path)).expandtabs()
         new_str = new_str.expandtabs()
         file_text_lines = file_text.split("\n")
         n_lines_file = len(file_text_lines)
@@ -373,7 +348,7 @@ class StrReplaceEditor(BaseTool):
         new_file_text = "\n".join(new_file_text_lines)
         snippet = "\n".join(snippet_lines)
 
-        await operator.write_file(path, new_file_text)
+        await self._write_file(path, new_file_text)
         self._file_history[path].append(file_text)
 
         # Prepare success message
@@ -387,15 +362,13 @@ class StrReplaceEditor(BaseTool):
 
         return CLIResult(output=success_msg)
 
-    async def undo_edit(
-        self, path: PathLike, operator: FileOperator = None
-    ) -> CLIResult:
+    async def undo_edit(self, path: PathLike) -> CLIResult:
         """Revert the last edit made to a file."""
         if not self._file_history[path]:
             raise ToolError(f"No edit history found for {path}.")
 
         old_text = self._file_history[path].pop()
-        await operator.write_file(path, old_text)
+        await self._write_file(path, old_text)
 
         return CLIResult(
             output=f"Last edit to {path} undone successfully. {self._make_output(old_text, str(path))}"
