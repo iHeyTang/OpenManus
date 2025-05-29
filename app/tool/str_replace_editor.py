@@ -4,7 +4,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, DefaultDict, List, Literal, Optional, get_args
 
-from app.config import config
 from app.exceptions import ToolError
 from app.tool import BaseTool
 from app.tool.base import CLIResult, ToolResult
@@ -99,16 +98,14 @@ class StrReplaceEditor(BaseTool):
     }
     _file_history: DefaultDict[PathLike, List[str]] = defaultdict(list)
     _local_operator: LocalFileOperator = LocalFileOperator()
-    _sandbox_operator: SandboxFileOperator = SandboxFileOperator()
+    _sandbox_operator: Optional[SandboxFileOperator] = None
 
     # def _get_operator(self, use_sandbox: bool) -> FileOperator:
     def _get_operator(self) -> FileOperator:
         """Get the appropriate file operator based on execution mode."""
-        return (
-            self._sandbox_operator
-            if config.sandbox.use_sandbox
-            else self._local_operator
-        )
+        if self._sandbox_operator is None:
+            self._sandbox_operator = SandboxFileOperator(self.sandbox)
+        return self._sandbox_operator
 
     async def execute(
         self,

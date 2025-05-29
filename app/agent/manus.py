@@ -8,11 +8,8 @@ from app.agent.base import BaseAgentEvents
 from app.agent.browser import BrowserContextHelper
 from app.agent.react import ReActAgent
 from app.agent.toolcall import ToolCallContextHelper
-from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, PLAN_PROMPT, SYSTEM_PROMPT
-from app.sandbox.client import SANDBOX_MANAGER
-from app.sandbox.core.sandbox import DockerSandbox
 from app.schema import Message
 from app.tool import Terminate, ToolCollection
 from app.tool.base import BaseTool
@@ -86,7 +83,6 @@ class Manus(ReActAgent):
 
     task_dir: str = ""
     language: Optional[str] = Field(None, description="Language for the agent")
-    sandbox: Optional[DockerSandbox] = None
 
     def initialize(
         self,
@@ -116,6 +112,8 @@ class Manus(ReActAgent):
 
     async def prepare(self) -> None:
         """Prepare the agent for execution."""
+        await super().prepare()
+
         self.system_prompt = SYSTEM_PROMPT.format(
             directory="/workspace",
             task_id=self.task_id,
@@ -137,18 +135,6 @@ class Manus(ReActAgent):
             role="system", content=self.system_prompt, base64_image=None
         )
 
-        orgnization_id, task_id = self.task_id.split("/")
-        sandbox_id = f"openmanus-sandbox-{orgnization_id}-{task_id}"
-        host_workspace_root = str(f"{config.host_workspace_root}/{orgnization_id}")
-        volume_bindings = {
-            host_workspace_root: f"/workspace/{orgnization_id}",
-            host_workspace_root: f"/workspace",
-        }
-
-        await SANDBOX_MANAGER.create_sandbox(
-            sandbox_id=sandbox_id, volume_bindings=volume_bindings
-        )
-        self.sandbox = await SANDBOX_MANAGER.get_sandbox(sandbox_id)
         self.browser_context_helper = BrowserContextHelper(self)
         self.tool_call_context_helper = ToolCallContextHelper(self)
         self.tool_call_context_helper.available_tools = ToolCollection(Terminate())
@@ -160,6 +146,8 @@ class Manus(ReActAgent):
                     await self.tool_call_context_helper.add_tool(inst)
                     if hasattr(inst, "llm"):
                         inst.llm = self.llm
+                    if hasattr(inst, "sandbox"):
+                        inst.sandbox = self.sandbox
                 elif isinstance(tool, McpToolConfig):
                     await self.tool_call_context_helper.add_mcp(
                         {
@@ -248,6 +236,5 @@ class Manus(ReActAgent):
             await self.browser_context_helper.cleanup_browser()
         if self.tool_call_context_helper:
             await self.tool_call_context_helper.cleanup_tools()
-        if self.sandbox:
-            await SANDBOX_MANAGER.delete_sandbox(self.sandbox.id)
+        await super().cleanup()
         logger.info(f"✨ Cleanup complete for agent '{self.name}'.")

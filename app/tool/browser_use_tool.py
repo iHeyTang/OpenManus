@@ -142,8 +142,6 @@ class BrowserUseTool(BaseTool, Generic[Context]):
     # Context for generic functionality
     tool_context: Optional[Context] = Field(default=None, exclude=True)
 
-    llm: Optional[LLM] = Field(default=None)
-
     @field_validator("parameters", mode="before")
     def validate_parameters(cls, v: dict, info: ValidationInfo) -> dict:
         if not v:

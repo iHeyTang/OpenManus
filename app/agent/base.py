@@ -20,11 +20,12 @@ from typing import (
 
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
-from app.config import Config
+from app.config import config
 from app.llm import LLM
 from app.logger import logger
 from app.memory import Memory
-from app.sandbox.client import SANDBOX_CLIENT
+from app.sandbox.client import SANDBOX_MANAGER
+from app.sandbox.core.sandbox import DockerSandbox
 from app.schema import ROLE_TYPE, AgentState, Message
 
 EventHandler = Callable[..., Coroutine[Any, Any, None]]
@@ -195,6 +196,8 @@ class BaseAgent(BaseModel, ABC):
         default=AgentState.IDLE, description="Current agent state"
     )
 
+    sandbox: Optional[DockerSandbox] = Field(None, description="Sandbox instance")
+
     should_terminate: bool = Field(default=False, description="Terminate the agent")
 
     # Execution control
@@ -306,7 +309,19 @@ class BaseAgent(BaseModel, ABC):
 
     async def prepare(self) -> None:
         """Prepare the agent for execution."""
-        pass
+        if not isinstance(self.sandbox, DockerSandbox):
+            orgnization_id, task_id = self.task_id.split("/")
+            sandbox_id = f"openmanus-sandbox-{orgnization_id}-{task_id}"
+            host_workspace_root = str(f"{config.host_workspace_root}/{orgnization_id}")
+            volume_bindings = {
+                host_workspace_root: f"/workspace/{orgnization_id}",
+                host_workspace_root: f"/workspace",
+            }
+
+            await SANDBOX_MANAGER.create_sandbox(
+                sandbox_id=sandbox_id, volume_bindings=volume_bindings
+            )
+            self.sandbox = await SANDBOX_MANAGER.get_sandbox(sandbox_id)
 
     async def plan(self) -> str:
         """Plan the agent's actions for the given request."""
@@ -368,7 +383,6 @@ class BaseAgent(BaseModel, ABC):
                 )
                 results.append(f"Terminated: Reached max steps ({self.max_steps})")
 
-        await SANDBOX_CLIENT.cleanup()
         if self.should_terminate:
             self.emit(
                 BaseAgentEvents.LIFECYCLE_TERMINATED,
@@ -577,3 +591,8 @@ class BaseAgent(BaseModel, ABC):
         logger.info(f"Terminating task {self.task_id}")
         self.should_terminate = True
         self.emit(BaseAgentEvents.LIFECYCLE_TERMINATING, {})
+
+    async def cleanup(self):
+        """Clean up the agent's resources."""
+        if self.sandbox:
+            await SANDBOX_MANAGER.delete_sandbox(self.sandbox.id)

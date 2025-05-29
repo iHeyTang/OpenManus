@@ -3,11 +3,16 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
+from app.llm import LLM
+from app.sandbox.core.sandbox import DockerSandbox
+
 
 class BaseTool(ABC, BaseModel):
     name: str
     description: str
     parameters: Optional[dict] = None
+    llm: Optional[LLM] = None
+    sandbox: Optional[DockerSandbox] = None
 
     class Config:
         arbitrary_types_allowed = True

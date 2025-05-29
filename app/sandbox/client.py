@@ -193,18 +193,6 @@ class LocalSandboxClient(BaseSandboxClient):
             self.sandbox = None
 
 
-def create_sandbox_client() -> LocalSandboxClient:
-    """Creates a sandbox client.
-
-    Returns:
-        LocalSandboxClient: Sandbox client instance.
-    """
-    return LocalSandboxClient()
-
-
-SANDBOX_CLIENT = create_sandbox_client()
-
-
 class SandBoxManager(CoreSandboxManager):
     """Sandbox manager"""
 
