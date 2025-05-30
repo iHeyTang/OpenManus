@@ -1,4 +1,5 @@
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
@@ -160,7 +161,8 @@ class SandBoxManager(CoreSandboxManager):
     async def create_sandbox(
         self,
         sandbox_id: str,
-        volume_bindings: Optional[Dict[str, str]] = None,
+        host_workspace: str,
+        default_working_directory: str,
     ) -> str:
         """ensure container exists, if not, create it"""
 
@@ -185,16 +187,13 @@ class SandBoxManager(CoreSandboxManager):
                 memory_limit="2g",
                 cpu_limit=1.0,
                 network_enabled=True,
-                work_dir="/workspace",
+                work_dir=default_working_directory,
             ),
             volume_bindings={
-                "openmanus-pip-cache": "/root/.cache/pip",
-                "openmanus-uv-cache": "/root/.cache/uv",
-                "openmanus-deno-cache": "/root/.cache/deno",
-                "openmanus-uv-tools": "/root/.local/share/uv/tools",
-                "openmanus-npm-cache": "/root/.npm",
-                "openmanus-yarn-cache": "/usr/local/share/.cache/yarn",
-                **volume_bindings,
+                f"{host_workspace}/.cache": "/root/.cache",
+                f"{host_workspace}/.local": "/root/.local",
+                f"{host_workspace}/.npm": "/root/.npm",
+                f"{host_workspace}": "/workspace",
             },
             environment={
                 "PYTHONUNBUFFERED": "1",

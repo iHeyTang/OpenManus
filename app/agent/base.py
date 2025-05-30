@@ -313,12 +313,11 @@ class BaseAgent(BaseModel, ABC):
             orgnization_id, task_id = self.task_id.split("/")
             sandbox_id = f"openmanus-sandbox-{orgnization_id}-{task_id}"
             host_workspace_root = str(f"{config.host_workspace_root}/{orgnization_id}")
-            volume_bindings = {
-                host_workspace_root: f"/workspace/{orgnization_id}",
-            }
 
             await SANDBOX_MANAGER.create_sandbox(
-                sandbox_id=sandbox_id, volume_bindings=volume_bindings
+                sandbox_id=sandbox_id,
+                host_workspace=host_workspace_root,
+                default_working_directory=f"/workspace/{task_id}",
             )
             self.sandbox = await SANDBOX_MANAGER.get_sandbox(sandbox_id)
 

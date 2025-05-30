@@ -22,15 +22,19 @@ class Bash(BaseTool):
                 "type": "string",
                 "description": "The bash command to execute. Can be empty to view additional logs when previous exit code is `-1`. Can be `ctrl+c` to interrupt the currently running process.",
             },
+            "timeout": {
+                "type": "integer",
+                "description": "Timeout in seconds for the command execution. If not provided, the system will use the default value (300 seconds).",
+            },
         },
         "required": ["command"],
     }
 
     async def execute(
-        self, command: str | None = None, restart: bool = False, **kwargs
+        self, command: str | None = None, timeout: int | None = None
     ) -> CLIResult:
         if command is not None:
-            return await self.sandbox.run_command(command)
+            return await self.sandbox.run_command(command, timeout=timeout or 300)
 
         raise ToolError("no command provided.")
 

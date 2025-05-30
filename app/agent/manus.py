@@ -56,13 +56,10 @@ class Manus(ReActAgent):
     )
 
     system_prompt: str = SYSTEM_PROMPT.format(
-        directory="/workspace",
         task_id="Not Specified",
-        task_dir="Not Specified",
         language="English",
-        current_date=datetime.now().strftime("%Y-%m-%d"),
         max_steps=20,
-        current_step=0,
+        current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
     )
     next_step_prompt: str = NEXT_STEP_PROMPT.format(
         max_steps=20,
@@ -114,22 +111,18 @@ class Manus(ReActAgent):
     async def prepare(self) -> None:
         """Prepare the agent for execution."""
         await super().prepare()
-
+        task_id_without_orgnization_id = self.task_id.split("/")[-1]
         self.system_prompt = SYSTEM_PROMPT.format(
-            directory="/workspace",
-            task_id=self.task_id,
-            task_dir=self.task_dir,
+            task_id=task_id_without_orgnization_id,
             language=self.language or "English",
-            current_date=datetime.now().strftime("%Y-%m-%d"),
             max_steps=self.max_steps,
-            current_step=self.current_step,
+            current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
         )
 
         self.next_step_prompt = NEXT_STEP_PROMPT.format(
             max_steps=self.max_steps,
             current_step=self.current_step,
             remaining_steps=self.max_steps - self.current_step,
-            task_dir=self.task_dir,
         )
 
         await self.update_memory(
@@ -197,7 +190,6 @@ class Manus(ReActAgent):
             max_steps=self.max_steps,
             current_step=self.current_step,
             remaining_steps=self.max_steps - self.current_step,
-            task_dir=self.task_dir,
         )
 
         browser_in_use = self._check_browser_in_use_recently()
