@@ -5,6 +5,7 @@ import { decryptLongTextWithPrivateKey, decryptWithPrivateKey } from '@/lib/cryp
 import { LANGUAGE_CODES } from '@/lib/language';
 import { prisma } from '@/lib/prisma';
 import { to } from '@/lib/to';
+import { mcpServerSchema } from '@/lib/tools';
 import fs from 'fs';
 import path from 'path';
 
@@ -51,32 +52,52 @@ export const createTask = withUserAuth(async ({ organization, args }: AuthWrappe
   });
 
   // Query tool configurations
-  const organizationTools = await prisma.organizationTools.findMany({
-    where: { organizationId: organization.id, tool: { id: { in: tools } } },
-    include: { tool: true },
+  const agentTools = await prisma.agentTools.findMany({
+    where: { organizationId: organization.id, id: { in: tools } },
+    include: { schema: true },
   });
 
   // Build tool list, use configuration if available, otherwise use tool name
   const processedTools = tools.map(tool => {
-    const orgTool = organizationTools.find(ot => ot.tool.id === tool);
-    if (orgTool) {
-      const env = orgTool.env ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.env, privateKey)) : {};
-      const query = orgTool.query ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.query, privateKey)) : {};
-      const fullUrl = buildMcpSseFullUrl(orgTool.tool.url, query);
-      const headers = orgTool.headers ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.headers, privateKey)) : {};
+    const agentTool = agentTools.find(at => at.id === tool);
+    if (agentTool) {
+      if (agentTool.source === 'STANDARD' && agentTool.schema) {
+        const env = agentTool.env ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.env, privateKey)) : {};
+        const query = agentTool.query ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.query, privateKey)) : {};
+        const fullUrl = buildMcpSseFullUrl(agentTool.schema.url, query);
+        const headers = agentTool.headers ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.headers, privateKey)) : {};
 
-      return JSON.stringify({
-        id: orgTool.tool.id,
-        name: orgTool.tool.name,
-        command: orgTool.tool.command,
-        args: orgTool.tool.args,
-        env: env,
-        url: fullUrl,
-        headers: headers,
-      });
+        return JSON.stringify({
+          id: agentTool.id,
+          name: agentTool.name || agentTool.schema?.name,
+          command: agentTool.schema?.command,
+          args: agentTool.schema?.args,
+          env: env,
+          url: fullUrl,
+          headers: headers,
+        });
+      } else if (agentTool.source === 'CUSTOM') {
+        const customConfig = agentTool.customConfig ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.customConfig, privateKey)) : {};
+        const validationResult = mcpServerSchema.safeParse(customConfig);
+        if (!validationResult.success) {
+          throw new Error(`Invalid config: ${validationResult.error.message}`);
+        }
+        const server = validationResult.data;
+        const fullUrl = buildMcpSseFullUrl(server.url || '', server.query || {});
+        return JSON.stringify({
+          id: agentTool.id,
+          name: agentTool.name,
+          command: server.command || '',
+          args: server.args || [],
+          env: server.env || {},
+          url: fullUrl,
+          headers: server.headers || {},
+        });
+      }
     }
     return tool;
   });
+  console.log(processedTools);
 
   // Create task
   const task = await prisma.tasks.create({
@@ -153,23 +174,48 @@ export const restartTask = withUserAuth(
     });
 
     // Query tool configurations
-    const organizationTools = await prisma.organizationTools.findMany({
-      where: { organizationId: organization.id, tool: { id: { in: tools } } },
-      include: { tool: true },
+    const agentTools = await prisma.agentTools.findMany({
+      where: { organizationId: organization.id, schemaId: { in: tools } },
+      include: { schema: true },
     });
 
     // Build tool list, use configuration if available, otherwise use tool name
     const processedTools = tools.map(tool => {
-      const orgTool = organizationTools.find(ot => ot.tool.id === tool);
-      if (orgTool) {
-        const env = orgTool.env ? JSON.parse(decryptLongTextWithPrivateKey(orgTool.env, privateKey)) : {};
-        return JSON.stringify({
-          id: orgTool.tool.id,
-          name: orgTool.tool.name,
-          command: orgTool.tool.command,
-          args: orgTool.tool.args,
-          env: env,
-        });
+      const agentTool = agentTools.find(at => at.id === tool);
+      if (agentTool) {
+        if (agentTool.source === 'STANDARD' && agentTool.schema) {
+          const env = agentTool.env ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.env, privateKey)) : {};
+          const query = agentTool.query ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.query, privateKey)) : {};
+          const fullUrl = buildMcpSseFullUrl(agentTool.schema.url, query);
+          const headers = agentTool.headers ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.headers, privateKey)) : {};
+
+          return JSON.stringify({
+            id: agentTool.id,
+            name: agentTool.name,
+            command: agentTool.schema?.command,
+            args: agentTool.schema?.args,
+            env: env,
+            url: fullUrl,
+            headers: headers,
+          });
+        } else if (agentTool.source === 'CUSTOM') {
+          const customConfig = agentTool.customConfig ? JSON.parse(decryptLongTextWithPrivateKey(agentTool.customConfig, privateKey)) : {};
+          const validationResult = mcpServerSchema.safeParse(customConfig);
+          if (!validationResult.success) {
+            throw new Error(`Invalid config: ${validationResult.error.message}`);
+          }
+          const server = validationResult.data;
+          const fullUrl = buildMcpSseFullUrl(server.url || '', server.query || {});
+          return JSON.stringify({
+            id: agentTool.id,
+            name: agentTool.name,
+            command: server.command || '',
+            args: server.args || [],
+            env: server.env || {},
+            url: fullUrl,
+            headers: server.headers || {},
+          });
+        }
       }
       return tool;
     });

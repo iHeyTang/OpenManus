@@ -1,5 +1,5 @@
 'use client';
-import { getOrganizationToolsInfo, getToolsInfo } from '@/actions/tools';
+import { listAgentTools, listToolSchemas } from '@/actions/tools';
 import { Sparkles, Plus } from 'lucide-react';
 import { useRef } from 'react';
 import { ToolInfoDialog, ToolInfoDialogRef } from './tool-info-dialog';
@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { getMe } from '@/actions/me';
 
 export default function MarketplacePage() {
-  const { data: allTools = [], refresh: refreshAllTools } = useServerAction(getToolsInfo, {}, { cache: 'all-tools' });
-  const { data: installedTools = [], refresh: refreshInstalledTools } = useServerAction(getOrganizationToolsInfo, {}, { cache: 'installed-tools' });
+  const { data: allTools = [], refresh: refreshAllTools } = useServerAction(listToolSchemas, {}, { cache: 'all-tools' });
+  const { data: installedTools = [], refresh: refreshInstalledTools } = useServerAction(listAgentTools, {}, { cache: 'installed-tools' });
 
   const toolInfoDialogRef = useRef<ToolInfoDialogRef>(null);
   const toolRegisterDialogRef = useRef<ToolRegisterDialogRef>(null);

@@ -145,6 +145,7 @@ model InviteCodes {
   @@index([isUsed])
 }
 
+// @deprecated: use ToolSchemas instead
 model Tools {
   id            String   @id @default(cuid())
   name          String   @unique
@@ -167,6 +168,7 @@ model Tools {
   @@index([createdAt])
 }
 
+// @deprecated: use AgentTools instead
 model OrganizationTools {
   id             String   @id @default(cuid())
   toolId         String
@@ -184,5 +186,60 @@ model OrganizationTools {
   @@unique([toolId, organizationId])
   @@index([toolId])
   @@index([organizationId])
+  @@index([createdAt])
+}
+
+enum AgentToolSource {
+  STANDARD
+  CUSTOM
+}
+
+model AgentTools {
+  id             String          @id @default(cuid())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organizationId String
+  name           String?
+  source         AgentToolSource
+  schemaId       String?
+  // for stdio
+  env            String?
+  // for sse
+  query          String?
+  headers        String?
+  // for custom
+  customConfig   String?
+
+  schema ToolSchemas? @relation(fields: [schemaId], references: [id])
+
+  @@unique([schemaId, organizationId])
+  @@index([schemaId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+model ToolSchemas {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  name          String   @unique
+  description   String?  @db.Text
+  repoUrl       String?
+  /// Command for stdio
+  command       String   @default("")
+  /// Args for stdio
+  args          Json     @default("[]")
+  /// [JSONSchema] EnvSchema for stdio
+  envSchema     Json     @default("{}")
+  /// Url for sse
+  url           String   @default("")
+  /// QuerySchema for sse
+  querySchema   Json     @default("{}")
+  /// [JSONSchema] HeadersSchema for sse
+  headersSchema Json     @default("{}")
+
+  AgentTools AgentTools[]
+
+  @@index([name])
   @@index([createdAt])
 }

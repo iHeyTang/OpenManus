@@ -37,11 +37,11 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareExpiration, setShareExpiration] = useState('60');
   const [isSharing, setIsSharing] = useState(false);
-  const { selectedModel, selectedTools } = useInputConfig();
+  const { enabledModel, enabledTools } = useInputConfig();
 
   const { data: llmConfigs, isLoading: loadingLlmConfigs } = useServerAction(getLlmConfigs, {});
 
-  const currentModel = useMemo(() => llmConfigs?.find(c => c.id === selectedModel), [llmConfigs, selectedModel]);
+  const currentModel = useMemo(() => llmConfigs?.find(c => c.id === enabledModel), [llmConfigs, enabledModel]);
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -49,7 +49,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
       if (status === 'thinking' || status === 'terminating' || !value.trim()) {
         return;
       }
-      await onSubmit?.({ modelId: selectedModel, prompt: value.trim(), tools: selectedTools, files, shouldPlan });
+      await onSubmit?.({ modelId: enabledModel, prompt: value.trim(), tools: enabledTools, files, shouldPlan });
       setValue('');
       setFiles([]);
     }
@@ -93,7 +93,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
     }
     const v = value.trim();
     if (v || files.length > 0) {
-      await onSubmit?.({ modelId: selectedModel, prompt: v, tools: selectedTools, files, shouldPlan });
+      await onSubmit?.({ modelId: enabledModel, prompt: v, tools: enabledTools, files, shouldPlan });
       setValue('');
       setFiles([]);
     }
@@ -189,7 +189,7 @@ export const ChatInput = ({ status = 'idle', onSubmit, onTerminate, taskId }: Ch
               <Badge variant="outline" className="flex cursor-pointer items-center gap-1" onClick={() => toolsConfigDialogRef.current?.open()}>
                 <Wrench className="h-3 w-3" />
                 <span>{currentModel?.name || currentModel?.model || 'Unknown Model'}</span>
-                <span>with Tools {selectedTools.length ? `(${selectedTools.length})` : ''}</span>
+                <span>with Tools {enabledTools.length ? `(${enabledTools.length})` : ''}</span>
               </Badge>
             </div>
             <div className="flex items-center gap-2">

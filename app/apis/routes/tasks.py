@@ -153,9 +153,10 @@ async def create_task(
     if preferences:
         try:
             preferences_dict = json.loads(preferences)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             raise HTTPException(
-                status_code=400, detail="Invalid preferences JSON format"
+                status_code=400,
+                detail=f"Invalid preferences JSON format: {str(e)}",
             )
 
     llm_config_obj = None
