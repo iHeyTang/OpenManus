@@ -140,7 +140,7 @@ export const registerTool = withUserAuth(
   async ({
     user,
     args: { name, description, repoUrl, command, args, envSchema },
-  }: AuthWrapperContext<{ name: string; description: string; repoUrl: string; command: string; args: string[]; envSchema: JSONSchema }>) => {
+  }: AuthWrapperContext<{ name: string; description: string; repoUrl?: string; command: string; args: string[]; envSchema: JSONSchema }>) => {
     const u = await prisma.users.findUnique({ where: { email: user.email } });
     if (!u) {
       throw new Error('User not found');
