@@ -13,6 +13,7 @@ export interface FilePreviewPluginContext {
   fileContent: string;
   fileType: string;
   fileName: string;
+  fileUrl: string;
   container: HTMLElement;
   api: FilePreviewPluginAPI;
 }

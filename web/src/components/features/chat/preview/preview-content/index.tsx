@@ -21,7 +21,7 @@ import { getImageUrl } from '@/lib/image';
 import Image from 'next/image';
 import { useAsync } from '@/hooks/use-async';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { FilePreviewContainer } from '@/components/features/chat/preview/preview-content/file-preview-container';
 import { FilePreviewPluginManager } from '@/components/features/chat/preview/preview-content/file-preview-plugin-manager';
@@ -32,7 +32,7 @@ export const PreviewContent = ({ messages }: { messages: Message[] }) => {
   const { data } = usePreviewData();
 
   useEffect(() => {
-    const pluginPaths = ['markdown-viewer', 'csv-viewer'];
+    const pluginPaths = ['markdown-viewer', 'csv-viewer', 'video-viewer'];
     pluginManager.loadAllPlugins(pluginPaths);
   }, []);
 
@@ -420,7 +420,15 @@ const FileContent = ({ blob, path }: { blob: Blob; path: string }) => {
   const fileType = path.split('.').pop()?.toLowerCase() || '';
   const plugin = pluginManager.getPluginForFileType(fileType);
   if (plugin) {
-    return <FilePreviewContainer fileContent={content} fileType={fileType} fileName={path} pluginManager={pluginManager} />;
+    return (
+      <FilePreviewContainer
+        fileContent={content}
+        fileType={fileType}
+        fileName={path}
+        fileUrl={`/api/workspace/${path}`}
+        pluginManager={pluginManager}
+      />
+    );
   }
 
   // For binary files or very large files, show a simplified view

@@ -9,10 +9,11 @@ interface FilePreviewContainerProps {
   fileContent: string;
   fileType: string;
   fileName: string;
+  fileUrl: string;
   pluginManager: FilePreviewPluginManager;
 }
 
-export const FilePreviewContainer: React.FC<FilePreviewContainerProps> = ({ fileContent, fileType, fileName, pluginManager }) => {
+export const FilePreviewContainer: React.FC<FilePreviewContainerProps> = ({ fileContent, fileType, fileName, fileUrl, pluginManager }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export const FilePreviewContainer: React.FC<FilePreviewContainerProps> = ({ file
         fileContent,
         fileType,
         fileName,
+        fileUrl,
         container: containerRef.current,
         api: createPluginAPI(containerRef.current),
       };
