@@ -19,7 +19,11 @@ Manus is amazing, but OpenManus can realize any creative idea without an invitat
 
 (Yes, it has full process replay capability, allowing you to share an execution process in an almost lossless way)
 
-https://openmanus.iheytang.com/share/tasks/cm9k3hmiv00ezo8011k4008qx
+1. Network search and automatic note-taking in Flomo through MCP
+   https://openmanus.iheytang.com/share/tasks/cm9k3hmiv00ezo8011k4008qx
+
+2. Text-to-image generation using MiniMax through MCP, further converting the generated images into video
+   https://openmanus.iheytang.com/tasks/cmbnaws9y001xqr01e7miwpme
 
 ## Project Features
 

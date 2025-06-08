@@ -19,7 +19,11 @@ Manus 非常棒，但 OpenManus 无需邀请码即可实现任何创意 🛫！
 
 (没错，它拥有全流程回放能力，这使得你可以将一个的执行过程以几乎无损的方式分享)
 
-https://openmanus.iheytang.com/share/tasks/cm9k3hmiv00ezo8011k4008qx
+1. 通过 MCP 实现网络搜索和访问 Flomo 自动记录笔记
+   https://openmanus.iheytang.com/share/tasks/cm9k3hmiv00ezo8011k4008qx
+
+2. 通过 MCP 实现 MiniMax 的文字生成图像，进一步通过生成的图像来生成视频
+   https://openmanus.iheytang.com/tasks/cmbnaws9y001xqr01e7miwpme
 
 ## 项目特点
 
