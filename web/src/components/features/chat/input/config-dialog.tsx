@@ -57,7 +57,7 @@ export const InputConfigDialog = React.forwardRef<InputConfigDialogRef, InputCon
   const addNewCustomToolRef = useRef<AddNewCustomToolDialogRef>(null);
 
   const { data: llmConfigs } = useServerAction(getLlmConfigs, {});
-  const { allTools, refreshAllTools } = useAgentTools();
+  const { allTools, refreshTools } = useAgentTools();
 
   const { enabledModel, setEnabledModel, enabledTools, setEnabledTools } = useInputConfig();
 
@@ -113,7 +113,7 @@ export const InputConfigDialog = React.forwardRef<InputConfigDialogRef, InputCon
       onConfirm: async () => {
         await removeTool({ toolId });
         setShowToolId(null);
-        refreshAllTools();
+        refreshTools();
       },
       buttonText: {
         confirm: 'Confirm Remove',
@@ -279,7 +279,7 @@ export const InputConfigDialog = React.forwardRef<InputConfigDialogRef, InputCon
       <AddNewCustomToolDialog
         ref={addNewCustomToolRef}
         onSuccess={() => {
-          refreshAllTools();
+          refreshTools();
         }}
       />
     </>
