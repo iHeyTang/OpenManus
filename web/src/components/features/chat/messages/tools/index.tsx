@@ -3,6 +3,7 @@ import { AggregatedMessage, Message } from '@/lib/chat-messages/types';
 import { getImageUrl } from '@/lib/image';
 import Image from 'next/image';
 import { usePreviewData } from '../../preview/store';
+import useAgentTools from '@/hooks/use-tools';
 
 type ToolCall = {
   id: string;
@@ -15,6 +16,7 @@ type ToolCall = {
 
 export const ToolMessageContent = ({ message }: { message: AggregatedMessage & { type: 'agent:lifecycle:step' } }) => {
   const { setData } = usePreviewData();
+  const { getToolByPrefix } = useAgentTools();
   if (message.type !== 'agent:lifecycle:step') return null;
 
   // 在一个step中查找think和act消息
@@ -45,6 +47,9 @@ export const ToolMessageContent = ({ message }: { message: AggregatedMessage & {
             const executeComplete = actToolMessage?.messages.find(
               m => m.type === 'agent:lifecycle:step:act:tool:execute:complete' && m.content.id === toolCall.id,
             );
+
+            const { toolName, functionName } = getToolByPrefix(toolCall.function.name);
+
             return (
               <Badge
                 key={toolCall.id}
@@ -54,7 +59,7 @@ export const ToolMessageContent = ({ message }: { message: AggregatedMessage & {
                   setData({ type: 'tool', toolId: toolCall.id });
                 }}
               >
-                {executeComplete?.content.error ? '🚨' : executeComplete ? '🎯' : '🔍'} {toolCall?.function.name || 'Unknown Tool'}
+                {executeComplete?.content.error ? '🚨' : executeComplete ? '🎯' : '🔍'} {toolName} {functionName}
               </Badge>
             );
           })}

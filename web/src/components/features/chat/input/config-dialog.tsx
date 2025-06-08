@@ -1,5 +1,5 @@
 import { getLlmConfigs } from '@/actions/config';
-import { listAgentTools, removeTool } from '@/actions/tools';
+import { removeTool } from '@/actions/tools';
 import { confirm } from '@/components/block/confirm';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import remarkGfm from 'remark-gfm';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { AddNewCustomToolDialog, AddNewCustomToolDialogRef } from './add-new-custom-tool-dialog';
+import useAgentTools from '@/hooks/use-tools';
 
 const DEFAULT_SELECTED_TOOLS = ['web_search', 'str_replace_editor', 'python_execute', 'browser_use'];
 
@@ -56,7 +57,7 @@ export const InputConfigDialog = React.forwardRef<InputConfigDialogRef, InputCon
   const addNewCustomToolRef = useRef<AddNewCustomToolDialogRef>(null);
 
   const { data: llmConfigs } = useServerAction(getLlmConfigs, {});
-  const { data: allTools, refresh: refreshAllTools } = useServerAction(listAgentTools, {});
+  const { allTools, refreshAllTools } = useAgentTools();
 
   const { enabledModel, setEnabledModel, enabledTools, setEnabledTools } = useInputConfig();
 

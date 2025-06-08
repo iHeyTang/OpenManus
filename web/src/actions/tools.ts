@@ -18,7 +18,7 @@ export const listAgentTools = withUserAuth(async ({ organization }: AuthWrapperC
   // Get system tools
   const systemTools = await fetch(`${MANUS_URL}/tools`)
     .then(res => res.json() as Promise<{ name: string; type: 'tool' | 'mcp'; description: string; parameters: JSONSchema }[]>)
-    .then(res => res.map(r => ({ ...r, id: r.name, source: 'BUILT_IN' })));
+    .then(res => res.map(r => ({ ...r, id: r.name, source: 'BUILT_IN', schema: { id: r.name, name: r.name } })));
 
   // Get organization custom tools
   const tools = await prisma.agentTools
@@ -26,9 +26,7 @@ export const listAgentTools = withUserAuth(async ({ organization }: AuthWrapperC
       where: {
         organizationId: organization.id,
       },
-      include: {
-        schema: true,
-      },
+      include: { schema: { select: { id: true, name: true, description: true } } },
     })
     .then(res =>
       res.map(r => ({
@@ -37,6 +35,10 @@ export const listAgentTools = withUserAuth(async ({ organization }: AuthWrapperC
         type: 'mcp',
         description: r.schema?.description,
         source: r.source,
+        schema: {
+          id: r.schema?.id,
+          name: r.schema?.name,
+        },
       })),
     );
 
