@@ -23,7 +23,7 @@ Manus is amazing, but OpenManus can realize any creative idea without an invitat
    https://openmanus.iheytang.com/share/tasks/cm9k3hmiv00ezo8011k4008qx
 
 2. Text-to-image generation using MiniMax through MCP, further converting the generated images into video
-   https://openmanus.iheytang.com/tasks/cmbnaws9y001xqr01e7miwpme
+   https://openmanus.iheytang.com/share/tasks/cmbnaws9y001xqr01e7miwpme
 
 ## Project Features
 
