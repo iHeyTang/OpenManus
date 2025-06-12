@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Optional, Union
+from typing import AsyncGenerator, Dict, List, Optional, Union
 
 import tiktoken
 from openai import (
@@ -18,7 +18,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from app.bedrock import BedrockClient
+from app.bedrock import BedrockClient, OpenAIResponse
 from app.config import LLMSettings, config
 from app.exceptions import TokenLimitExceeded
 from app.logger import logger  # Assuming a logger is set up in your app
@@ -369,20 +369,24 @@ class LLM:
         self,
         messages: List[Union[dict, Message]],
         system_msgs: Optional[List[Union[dict, Message]]] = None,
+        images: Optional[List[Union[str, dict]]] = None,
         stream: bool = True,
+        stream_res: bool = False,
         temperature: Optional[float] = None,
-    ) -> str:
+    ) -> Union[str, AsyncGenerator[str, None]]:
         """
         Send a prompt to the LLM and get the response.
 
         Args:
             messages: List of conversation messages
             system_msgs: Optional system messages to prepend
+            images: Optional list of image URLs or image data dictionaries, only support for multimodal models
             stream (bool): Whether to stream the response
+            stream_res (bool): Whether to return streaming response as generator
             temperature (float): Sampling temperature for the response
 
         Returns:
-            str: The generated response
+            Union[str, AsyncGenerator[str, None]]: The generated response as string or streaming generator
 
         Raises:
             TokenLimitExceeded: If token limits are exceeded
@@ -394,12 +398,55 @@ class LLM:
             # Check if the model supports images
             supports_images = self.model in MULTIMODAL_MODELS
 
+            # If images are provided, validate model support
+            if images and not supports_images:
+                raise ValueError(
+                    f"Model {self.model} does not support images. Use a model from {MULTIMODAL_MODELS}"
+                )
+
             # Format system and user messages with image support check
             if system_msgs:
                 system_msgs = self.format_messages(system_msgs, supports_images)
                 messages = system_msgs + self.format_messages(messages, supports_images)
             else:
                 messages = self.format_messages(messages, supports_images)
+
+            # Process images if provided
+            if images:
+                # Ensure the last message is from the user to attach images
+                if not messages or messages[-1]["role"] != "user":
+                    raise ValueError(
+                        "The last message must be from the user to attach images"
+                    )
+
+                # Process the last user message to include images
+                last_message = messages[-1]
+
+                # Convert content to multimodal format if needed
+                content = last_message["content"]
+                multimodal_content = (
+                    [{"type": "text", "text": content}]
+                    if isinstance(content, str)
+                    else content if isinstance(content, list) else []
+                )
+
+                # Add images to content
+                for image in images:
+                    if isinstance(image, str):
+                        multimodal_content.append(
+                            {"type": "image_url", "image_url": {"url": image}}
+                        )
+                    elif isinstance(image, dict) and "url" in image:
+                        multimodal_content.append(
+                            {"type": "image_url", "image_url": image}
+                        )
+                    elif isinstance(image, dict) and "image_url" in image:
+                        multimodal_content.append(image)
+                    else:
+                        raise ValueError(f"Unsupported image format: {image}")
+
+                # Update the message with multimodal content
+                last_message["content"] = multimodal_content
 
             # Calculate input token count
             input_tokens = self.count_message_tokens(messages)
@@ -439,204 +486,80 @@ class LLM:
 
                 return response.choices[0].message.content
 
-            # Streaming request, For streaming, update estimated token count before making the request
-            self.update_token_count(input_tokens)
-
-            response = await self.client.chat.completions.create(**params, stream=True)
-
-            collected_messages = []
-            completion_text = ""
-            async for chunk in response:
-                chunk_message = (
-                    chunk.choices[0].delta.content
-                    if chunk.choices
-                    and chunk.choices[0].delta
-                    and chunk.choices[0].delta.content
-                    else ""
+            # Streaming request
+            if stream and stream_res:
+                # Return streaming response as generator
+                self.update_token_count(input_tokens)
+                response = await self.client.chat.completions.create(
+                    **params, stream=True
                 )
-                collected_messages.append(chunk_message)
-                completion_text += chunk_message
-                print(chunk_message, end="", flush=True)
 
-            print()  # Newline after streaming
-            full_response = "".join(collected_messages).strip()
-            if not full_response:
-                raise ValueError("Empty response from streaming LLM")
+                async def stream_generator():
+                    completion_text = ""
+                    try:
+                        async for chunk in response:
+                            chunk_message = (
+                                chunk.choices[0].delta.content
+                                if chunk.choices
+                                and chunk.choices[0].delta
+                                and chunk.choices[0].delta.content
+                                else ""
+                            )
+                            completion_text += chunk_message
+                            yield chunk_message
 
-            # estimate completion tokens for streaming response
-            completion_tokens = self.count_tokens(completion_text)
-            logger.info(
-                f"Estimated completion tokens for streaming response: {completion_tokens}"
-            )
-            self.total_completion_tokens += completion_tokens
+                        # Estimate completion tokens for streaming response
+                        completion_tokens = self.count_tokens(completion_text)
+                        logger.info(
+                            f"Estimated completion tokens for streaming response: {completion_tokens}"
+                        )
+                        self.total_completion_tokens += completion_tokens
 
-            return full_response
+                    except Exception as e:
+                        logger.error(f"Error in streaming generator: {e}")
+                        raise
+
+                return stream_generator()
+            else:
+                # Streaming request with print output (original behavior)
+                self.update_token_count(input_tokens)
+                response = await self.client.chat.completions.create(
+                    **params, stream=True
+                )
+
+                collected_messages = []
+                completion_text = ""
+                async for chunk in response:
+                    chunk_message = (
+                        chunk.choices[0].delta.content
+                        if chunk.choices
+                        and chunk.choices[0].delta
+                        and chunk.choices[0].delta.content
+                        else ""
+                    )
+                    collected_messages.append(chunk_message)
+                    completion_text += chunk_message
+                    print(chunk_message, end="", flush=True)
+
+                print()  # Newline after streaming
+                full_response = "".join(collected_messages).strip()
+                if not full_response:
+                    raise ValueError("Empty response from streaming LLM")
+
+                # estimate completion tokens for streaming response
+                completion_tokens = self.count_tokens(completion_text)
+                logger.info(
+                    f"Estimated completion tokens for streaming response: {completion_tokens}"
+                )
+                self.total_completion_tokens += completion_tokens
+
+                return full_response
 
         except TokenLimitExceeded:
             # Re-raise token limit errors without logging
             raise
-        except ValueError:
-            logger.exception(f"Validation error")
-            raise
-        except OpenAIError as oe:
-            logger.exception(f"OpenAI API error")
-            if isinstance(oe, AuthenticationError):
-                logger.error("Authentication failed. Check API key.")
-            elif isinstance(oe, RateLimitError):
-                logger.error("Rate limit exceeded. Consider increasing retry attempts.")
-            elif isinstance(oe, APIError):
-                logger.error(f"API error: {oe}")
-            raise
-        except Exception:
-            logger.exception(f"Unexpected error in ask")
-            raise
-
-    @retry(
-        wait=wait_random_exponential(min=1, max=60),
-        stop=stop_after_attempt(6),
-        retry=retry_if_exception_type(
-            (OpenAIError, Exception, ValueError)
-        ),  # Don't retry TokenLimitExceeded
-    )
-    async def ask_with_images(
-        self,
-        messages: List[Union[dict, Message]],
-        images: List[Union[str, dict]],
-        system_msgs: Optional[List[Union[dict, Message]]] = None,
-        stream: bool = False,
-        temperature: Optional[float] = None,
-    ) -> str:
-        """
-        Send a prompt with images to the LLM and get the response.
-
-        Args:
-            messages: List of conversation messages
-            images: List of image URLs or image data dictionaries
-            system_msgs: Optional system messages to prepend
-            stream (bool): Whether to stream the response
-            temperature (float): Sampling temperature for the response
-
-        Returns:
-            str: The generated response
-
-        Raises:
-            TokenLimitExceeded: If token limits are exceeded
-            ValueError: If messages are invalid or response is empty
-            OpenAIError: If API call fails after retries
-            Exception: For unexpected errors
-        """
-        try:
-            # For ask_with_images, we always set supports_images to True because
-            # this method should only be called with models that support images
-            if self.model not in MULTIMODAL_MODELS:
-                raise ValueError(
-                    f"Model {self.model} does not support images. Use a model from {MULTIMODAL_MODELS}"
-                )
-
-            # Format messages with image support
-            formatted_messages = self.format_messages(messages, supports_images=True)
-
-            # Ensure the last message is from the user to attach images
-            if not formatted_messages or formatted_messages[-1]["role"] != "user":
-                raise ValueError(
-                    "The last message must be from the user to attach images"
-                )
-
-            # Process the last user message to include images
-            last_message = formatted_messages[-1]
-
-            # Convert content to multimodal format if needed
-            content = last_message["content"]
-            multimodal_content = (
-                [{"type": "text", "text": content}]
-                if isinstance(content, str)
-                else content if isinstance(content, list) else []
-            )
-
-            # Add images to content
-            for image in images:
-                if isinstance(image, str):
-                    multimodal_content.append(
-                        {"type": "image_url", "image_url": {"url": image}}
-                    )
-                elif isinstance(image, dict) and "url" in image:
-                    multimodal_content.append({"type": "image_url", "image_url": image})
-                elif isinstance(image, dict) and "image_url" in image:
-                    multimodal_content.append(image)
-                else:
-                    raise ValueError(f"Unsupported image format: {image}")
-
-            # Update the message with multimodal content
-            last_message["content"] = multimodal_content
-
-            # Add system messages if provided
-            if system_msgs:
-                all_messages = (
-                    self.format_messages(system_msgs, supports_images=True)
-                    + formatted_messages
-                )
-            else:
-                all_messages = formatted_messages
-
-            # Calculate tokens and check limits
-            input_tokens = self.count_message_tokens(all_messages)
-            if not self.check_token_limit(input_tokens):
-                raise TokenLimitExceeded(self.get_limit_error_message(input_tokens))
-
-            # Set up API parameters
-            params = {
-                "model": self.model,
-                "messages": all_messages,
-                "stream": stream,
-            }
-
-            # Add model-specific parameters
-            if self.model in REASONING_MODELS:
-                params["max_completion_tokens"] = self.max_tokens
-            else:
-                params["max_tokens"] = self.max_tokens
-                params["temperature"] = (
-                    temperature if temperature is not None else self.temperature
-                )
-
-            # Handle non-streaming request
-            if not stream:
-                response = await self.client.chat.completions.create(**params)
-
-                if not response.choices or not response.choices[0].message.content:
-                    raise ValueError("Empty or invalid response from LLM")
-
-                self.update_token_count(response.usage.prompt_tokens)
-                return response.choices[0].message.content
-
-            # Handle streaming request
-            self.update_token_count(input_tokens)
-            response = await self.client.chat.completions.create(**params)
-
-            collected_messages = []
-            async for chunk in response:
-                chunk_message = (
-                    chunk.choices[0].delta.content
-                    if chunk.choices
-                    and chunk.choices[0].delta
-                    and chunk.choices[0].delta.content
-                    else ""
-                )
-                collected_messages.append(chunk_message)
-                print(chunk_message, end="", flush=True)
-
-            print()  # Newline after streaming
-            full_response = "".join(collected_messages).strip()
-
-            if not full_response:
-                raise ValueError("Empty response from streaming LLM")
-
-            return full_response
-
-        except TokenLimitExceeded:
-            raise
         except ValueError as ve:
-            logger.error(f"Validation error in ask_with_images: {ve}")
+            logger.error(f"Validation error in ask: {ve}")
             raise
         except OpenAIError as oe:
             logger.error(f"OpenAI API error: {oe}")
@@ -648,7 +571,7 @@ class LLM:
                 logger.error(f"API error: {oe}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in ask_with_images: {e}")
+            logger.error(f"Unexpected error in ask: {e}")
             raise
 
     @retry(
