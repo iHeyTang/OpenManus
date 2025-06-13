@@ -35,7 +35,7 @@ export const pageTasks = withUserAuth(async ({ organization, args }: AuthWrapper
 });
 
 type CreateTaskArgs = {
-  taskId: string;
+  taskId?: string;
   modelId: string;
   prompt: string;
   tools: string[];
