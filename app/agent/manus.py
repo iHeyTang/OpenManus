@@ -153,6 +153,10 @@ class Manus(ReActAgent):
                             "headers": tool.headers,
                         }
                     )
+        print("--------------------------------")
+        print(
+            f"prepare success, available tools: {', '.join([tool.name for tool in self.tool_call_context_helper.available_tools.tools])}"
+        )
 
     async def plan(self) -> str:
         """Create an initial plan based on the user request."""

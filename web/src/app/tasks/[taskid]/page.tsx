@@ -1,6 +1,6 @@
 'use client';
 
-import { getTask, restartTask, terminateTask } from '@/actions/tasks';
+import { getTask, createTask, terminateTask } from '@/actions/tasks';
 import { ChatInput } from '@/components/features/chat/input';
 import { ChatMessages } from '@/components/features/chat/messages';
 import { ChatPreview } from '@/components/features/chat/preview';
@@ -99,7 +99,7 @@ export default function ChatPage() {
 
   const handleSubmit = async (value: { modelId: string; prompt: string; tools: string[]; files: File[]; shouldPlan: boolean }) => {
     try {
-      const res = await restartTask({
+      const res = await createTask({
         taskId,
         modelId: value.modelId,
         prompt: value.prompt,
