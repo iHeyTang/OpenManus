@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 from app.agent.react import ReActAgent
 from app.context.browser import BrowserContextHelper
@@ -55,79 +55,43 @@ class Manus(ReActAgent):
         "A versatile agent that can solve various tasks using multiple tools"
     )
 
-    system_prompt: str = SYSTEM_PROMPT.format(
-        task_id="Not Specified",
-        language="English",
-        max_steps=20,
-        current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
-    )
-    next_step_prompt: str = NEXT_STEP_PROMPT.format(
-        max_steps=20,
-        current_step=0,
-        remaining_steps=20,
-        task_dir="Not Specified",
-    )
-    plan_prompt: str = PLAN_PROMPT.format(
-        max_steps=20,
-        language="English",
-        available_tools="",
-    )
-
-    max_steps: int = 20
-    task_request: str = ""
-
+    language: str
+    tools: list[Union[McpToolConfig, str]]
+    task_request: str
+    history: list[dict[str, Any]]
     tool_call_context_helper: Optional[ToolCallContextHelper] = None
     browser_context_helper: Optional[BrowserContextHelper] = None
 
-    task_dir: str = ""
-    language: Optional[str] = Field(None, description="Language for the agent")
-
-    def initialize(
-        self,
-        task_id: str,
-        language: Optional[str] = None,
-        tools: Optional[list[Union[McpToolConfig, str]]] = None,
-        max_steps: Optional[int] = None,
-        task_request: Optional[str] = None,
-    ):
-        self.task_id = task_id
-        self.language = language
-        self.task_dir = f"/workspace/{task_id}"
-        self.current_step = 0
-        self.tools = tools
-
-        if max_steps is not None:
-            self.max_steps = max_steps
-
-        if task_request is not None:
-            self.task_request = task_request
-
-        return self
-
     @model_validator(mode="after")
     def initialize_helper(self) -> "Manus":
-        return self
-
-    async def prepare(self) -> None:
-        """Prepare the agent for execution."""
-        await super().prepare()
-        task_id_without_orgnization_id = self.task_id.split("/")[-1]
+        organization_id, task_id = self.task_id.split("/")
+        self.task_dir = f"/workspace/{organization_id}/{task_id}"
         self.system_prompt = SYSTEM_PROMPT.format(
-            task_id=task_id_without_orgnization_id,
+            task_id=task_id,
             language=self.language or "English",
             max_steps=self.max_steps,
             current_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
         )
-
         self.next_step_prompt = NEXT_STEP_PROMPT.format(
             max_steps=self.max_steps,
             current_step=self.current_step,
             remaining_steps=self.max_steps - self.current_step,
         )
+        return self
+
+    async def prepare(self) -> None:
+        """Prepare the agent for execution."""
+        await super().prepare()
 
         await self.update_memory(
             role="system", content=self.system_prompt, base64_image=None
         )
+
+        if self.history:
+            for message in self.history:
+                await self.update_memory(
+                    role=message["role"], content=message["message"]
+                )
 
         self.browser_context_helper = BrowserContextHelper(self)
         self.tool_call_context_helper = ToolCallContextHelper(self)
@@ -163,7 +127,7 @@ class Manus(ReActAgent):
         # Create planning message
         self.emit(BaseAgentEvents.LIFECYCLE_PLAN_START, {})
 
-        self.plan_prompt = PLAN_PROMPT.format(
+        plan_prompt = PLAN_PROMPT.format(
             language=self.language or "English",
             max_steps=self.max_steps,
             available_tools="\n".join(
@@ -175,7 +139,7 @@ class Manus(ReActAgent):
         )
         planning_message = await self.llm.ask(
             [
-                Message.system_message(self.plan_prompt),
+                Message.system_message(plan_prompt),
                 Message.user_message(self.task_request),
             ],
             system_msgs=[Message.system_message(self.system_prompt)],

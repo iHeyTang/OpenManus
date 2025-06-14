@@ -2,7 +2,7 @@ import asyncio
 import json
 from json import dumps
 from pathlib import Path
-from typing import List, Optional, Union, cast
+from typing import Any, List, Optional, Union, cast
 
 from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -145,7 +145,7 @@ async def create_task(
     preferences_dict = None
     if preferences:
         try:
-            preferences_dict = json.loads(preferences)
+            preferences_dict: dict[str, Any] = json.loads(preferences)
         except json.JSONDecodeError as e:
             raise HTTPException(
                 status_code=400,
@@ -164,7 +164,7 @@ async def create_task(
     history_list = None
     if history:
         try:
-            history_list = json.loads(history)
+            history_list: list[dict[str, Any]] = json.loads(history)
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid history JSON format")
 
@@ -179,6 +179,7 @@ async def create_task(
         Manus(
             name=AGENT_NAME,
             description="A versatile agent that can solve various tasks using multiple tools",
+            task_id=task_id,
             should_plan=should_plan,
             llm=(
                 LLM(config_name=task_id, llm_config=llm_config_obj)
@@ -186,25 +187,12 @@ async def create_task(
                 else None
             ),
             enable_event_queue=True,
+            max_steps=preferences_dict.get("max_steps", 20),
+            language=preferences_dict.get("language", "English"),
+            tools=processed_tools,
+            task_request=prompt,
+            history=history_list,
         ),
-    )
-
-    if history_list:
-        for message in history_list:
-            if message["role"] == "user":
-                await task.agent.update_memory(role="user", content=message["message"])
-            else:
-                await task.agent.update_memory(
-                    role="assistant", content=message["message"]
-                )
-
-    task.agent.initialize(
-        task_id,
-        language=(
-            preferences_dict.get("language", "English") if preferences_dict else None
-        ),
-        tools=processed_tools,
-        task_request=prompt,
     )
 
     if files:
