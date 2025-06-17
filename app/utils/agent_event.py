@@ -52,6 +52,7 @@ BASE_AGENT_EVENTS_PREFIX = "agent:lifecycle"
 class BaseAgentEvents:
     # Lifecycle events
     LIFECYCLE_START = f"{BASE_AGENT_EVENTS_PREFIX}:start"
+    LIFECYCLE_SUMMARY = f"{BASE_AGENT_EVENTS_PREFIX}:summary"
     LIFECYCLE_PREPARE_START = f"{BASE_AGENT_EVENTS_PREFIX}:prepare:start"
     LIFECYCLE_PREPARE_COMPLETE = f"{BASE_AGENT_EVENTS_PREFIX}:prepare:complete"
     LIFECYCLE_PLAN_START = f"{BASE_AGENT_EVENTS_PREFIX}:plan:start"

@@ -63,6 +63,7 @@ model Tasks {
   id             String           @id @default(cuid())
   outId          String?          @unique
   llmId          String
+  summary        String?
   prompt         String           @db.Text
   status         String           @default("pending")
   createdAt      DateTime         @default(now())

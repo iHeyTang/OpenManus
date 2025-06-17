@@ -94,7 +94,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
                     <Link href={`/tasks/${item.id}`} className={cn(currentTaskId === item.id && 'bg-muted')}>
-                      <span>{item.prompt}</span>
+                      <span>{item.summary || item.prompt}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

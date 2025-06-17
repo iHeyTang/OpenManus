@@ -227,10 +227,17 @@ async function handleTaskEvents(taskId: string, outId: string, organizationId: s
           const type = parsed.name || parsed.event_name;
           const { step, content } = parsed;
 
-          // Write message to database
-          await prisma.taskProgresses.create({
-            data: { taskId, organizationId, index: messageIndex++, step, round, type, content },
-          });
+          if (type === 'agent:lifecycle:summary') {
+            await prisma.tasks.update({
+              where: { id: taskId },
+              data: { summary: content.summary },
+            });
+          } else {
+            // Write message to database
+            await prisma.taskProgresses.create({
+              data: { taskId, organizationId, index: messageIndex++, step, round, type, content },
+            });
+          }
 
           // If complete message, update task status
           if (type === 'agent:lifecycle:complete') {

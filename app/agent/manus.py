@@ -117,6 +117,16 @@ class Manus(ReActAgent):
                             "headers": tool.headers,
                         }
                     )
+        summary = await self.llm.ask(
+            [Message.user_message(self.task_request)],
+            [
+                Message.system_message(
+                    "Summarize the requirements or tasks provided by the user, Ensure that the core of the task can be reflected, answer in the user's language within 15 characters"
+                )
+            ],
+        )
+        self.emit(BaseAgentEvents.LIFECYCLE_SUMMARY, {"summary": summary})
+        print(summary)
         print("--------------------------------")
         print(
             f"prepare success, available tools: {', '.join([tool.name for tool in self.tool_call_context_helper.available_tools.tools])}"
