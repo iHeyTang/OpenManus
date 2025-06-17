@@ -21,17 +21,21 @@ from app.logger import logger
 if TYPE_CHECKING:
     from app.agent.base import BaseAgent
 
-EventHandler = Callable[..., Coroutine[Any, Any, None]]
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
 class EventItem(NamedTuple):
+    id: Optional[str]
+    parent_id: Optional[str]
     name: str
     step: int
     timestamp: datetime
     content: Any
+
+
+EventHandler = Callable[[EventItem], Coroutine[Any, Any, None]]
 
 
 class EventPattern:
@@ -147,15 +151,7 @@ class EventQueue:
                             if pattern.pattern.match(event.name):
                                 handler_found = True
                                 try:
-                                    kwargs = {
-                                        "event_name": event.name,
-                                        "step": event.step,
-                                        "content": event.content,
-                                    }
-                                    logger.debug(
-                                        f"Calling handler for {event.name} with kwargs: {kwargs}"
-                                    )
-                                    await pattern.handler(**kwargs)
+                                    await pattern.handler(event)
                                 except Exception as e:
                                     logger.error(
                                         f"Error in event handler for {event.name}: {str(e)}"

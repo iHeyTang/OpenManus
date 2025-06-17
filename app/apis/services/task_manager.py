@@ -1,10 +1,10 @@
 import asyncio
-import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Dict
 
 from app.agent.manus import Manus
 from app.apis.models.task import Task
+from app.utils.agent_event import EventItem
 
 
 class TaskManager:
@@ -22,18 +22,18 @@ class TaskManager:
         self.queues[task_id] = asyncio.Queue()
         return task
 
-    async def update_task_progress(
-        self, task_id: str, event_name: str, step: int, content: Any
-    ):
+    async def update_task_progress(self, task_id: str, event: EventItem):
         if task_id in self.tasks:
             task = self.tasks[task_id]
             # Use the same step value for both progress and message
             await self.queues[task_id].put(
                 {
+                    "id": event.id,
+                    "parent_id": event.parent_id,
                     "type": "progress",
-                    "event_name": event_name,
-                    "step": step,
-                    "content": content,
+                    "name": event.name,
+                    "step": event.step,
+                    "content": event.content,
                 }
             )
 

@@ -1,3 +1,4 @@
+import uuid
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -311,19 +312,19 @@ class BaseAgent(BaseModel, ABC):
         Args:
             event_pattern: Regex pattern to match event names
             handler: The async function to be called when matching events occur.
-                    The handler must accept event_name as its first parameter.
+                    The handler must accept event as its first parameter.
 
         Example:
             ```python
             # Subscribe to all lifecycle events
-            async def on_lifecycle(event_name: str, **data):
-                print(f"Lifecycle event {event_name} occurred with data: {data}")
+            async def on_lifecycle(event: EventItem):
+                print(f"Lifecycle event {event.name} occurred with data: {event.content}")
 
             agent.on("agent:lifecycle:.*", on_lifecycle)
 
             # Subscribe to specific state changes
-            async def on_state_change(event_name: str, old_state: AgentState, new_state: AgentState):
-                print(f"State changed from {old_state} to {new_state}")
+            async def on_state_change(event: EventItem):
+                print(f"State changed from {event.old_state} to {event.new_state}")
 
             agent.on("agent:state:change", on_state_change)
             ```
@@ -332,12 +333,15 @@ class BaseAgent(BaseModel, ABC):
             raise ValueError("Event handler must be a callable")
         self._private_event_queue.add_handler(event_pattern, handler)
 
-    def emit(self, event_name: str, data: Any) -> None:
+    def emit(
+        self, name: str, data: Any, options: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Emit an event and add it to the processing queue.
 
         Args:
-            event_name: The name of the event to emit
+            name: The name of the event to emit
             data: Event data dictionary
+            options: Optional event options
 
         Example:
             ```python
@@ -348,16 +352,22 @@ class BaseAgent(BaseModel, ABC):
             })
 
             # Subscribe to events with regex pattern
-            async def on_state_events(event_name: str, old_state: AgentState, new_state: AgentState):
-                print(f"Event {event_name}: State changed from {old_state} to {new_state}")
+            async def on_state_events(event: EventItem):
+                print(f"Event {event.name}: State changed from {event.old_state} to {event.new_state}")
 
             agent.on("agent:state:.*", on_state_events)
             ```
         """
         if not self.enable_event_queue:
             return
+        if options is None:
+            options = {}
+        if "id" not in options or options["id"] is None or options["id"] == "":
+            options["id"] = str(uuid.uuid4())
         event = EventItem(
-            name=event_name,
+            id=options.get("id"),
+            parent_id=options.get("parent_id"),
+            name=name,
             step=self.current_step,
             timestamp=datetime.now(),
             content=data,

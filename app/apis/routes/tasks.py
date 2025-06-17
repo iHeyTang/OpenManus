@@ -12,28 +12,26 @@ from app.apis.services.task_manager import task_manager
 from app.config import LLMSettings, config
 from app.llm import LLM
 from app.logger import logger
-from app.utils.agent_event import BaseAgentEvents
+from app.utils.agent_event import BaseAgentEvents, EventItem
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 AGENT_NAME = "Manus"
 
 
-async def handle_agent_event(task_id: str, event_name: str, step: int, **kwargs):
+async def handle_agent_event(task_id: str, event: EventItem):
     """Handle agent events and update task status.
 
     Args:
-        event_name: Name of the event
-        **kwargs: Additional parameters related to the event
+        task_id: Task ID
+        event: EventItem
     """
     if not task_id:
-        logger.warning(f"No task_id provided for event: {event_name}")
+        logger.warning(f"No task_id provided for event: {event.name}")
         return
 
     # Update task step
-    await task_manager.update_task_progress(
-        task_id=task_id, event_name=event_name, step=step, **kwargs
-    )
+    await task_manager.update_task_progress(task_id=task_id, event=event)
 
 
 async def run_task(task_id: str, prompt: str):
@@ -53,13 +51,7 @@ async def run_task(task_id: str, prompt: str):
         # Register handlers for each event pattern
         for pattern in event_patterns:
             agent.on(
-                pattern,
-                lambda event_name, step, **kwargs: handle_agent_event(
-                    task_id=task_id,
-                    event_name=event_name,
-                    step=step,
-                    **{k: v for k, v in kwargs.items() if k != "task_id"},
-                ),
+                pattern, lambda event: handle_agent_event(task_id=task_id, event=event)
             )
 
         # Run the agent
@@ -88,7 +80,7 @@ async def event_generator(task_id: str):
             # Send actual event data
             yield f"data: {formatted_event}\n\n"
 
-            if event.get("event_name") == BaseAgentEvents.LIFECYCLE_COMPLETE:
+            if event.get("name") == BaseAgentEvents.LIFECYCLE_COMPLETE:
                 break
         except asyncio.TimeoutError:
             yield ":heartbeat\n\n"

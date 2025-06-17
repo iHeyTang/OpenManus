@@ -223,28 +223,30 @@ async function handleTaskEvents(taskId: string, outId: string, organizationId: s
 
         try {
           const parsed = JSON.parse(line.slice(6));
-          const { event_name, step, content } = parsed;
+          // for backward compatibility, event_name is used in the past
+          const type = parsed.name || parsed.event_name;
+          const { step, content } = parsed;
 
           // Write message to database
           await prisma.taskProgresses.create({
-            data: { taskId, organizationId, index: messageIndex++, step, round, type: event_name, content },
+            data: { taskId, organizationId, index: messageIndex++, step, round, type, content },
           });
 
           // If complete message, update task status
-          if (event_name === 'agent:lifecycle:complete') {
+          if (type === 'agent:lifecycle:complete') {
             await prisma.tasks.update({
               where: { id: taskId },
               data: { status: 'completed' },
             });
             return;
           }
-          if (event_name === 'agent:lifecycle:terminating') {
+          if (type === 'agent:lifecycle:terminating') {
             await prisma.tasks.update({
               where: { id: taskId },
               data: { status: 'terminating' },
             });
           }
-          if (event_name === 'agent:lifecycle:terminated') {
+          if (type === 'agent:lifecycle:terminated') {
             await prisma.tasks.update({
               where: { id: taskId },
               data: { status: 'terminated' },
