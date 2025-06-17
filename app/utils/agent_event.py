@@ -29,9 +29,9 @@ R = TypeVar("R")
 
 class EventItem(NamedTuple):
     name: str
-    kwargs: dict
     step: int
     timestamp: datetime
+    content: Any
 
 
 class EventPattern:
@@ -150,7 +150,7 @@ class EventQueue:
                                     kwargs = {
                                         "event_name": event.name,
                                         "step": event.step,
-                                        **event.kwargs,
+                                        "content": event.content,
                                     }
                                     logger.debug(
                                         f"Calling handler for {event.name} with kwargs: {kwargs}"

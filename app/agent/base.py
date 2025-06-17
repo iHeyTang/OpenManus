@@ -332,7 +332,7 @@ class BaseAgent(BaseModel, ABC):
             raise ValueError("Event handler must be a callable")
         self._private_event_queue.add_handler(event_pattern, handler)
 
-    def emit(self, event_name: str, data: Dict[str, Any]) -> None:
+    def emit(self, event_name: str, data: Any) -> None:
         """Emit an event and add it to the processing queue.
 
         Args:
@@ -358,9 +358,9 @@ class BaseAgent(BaseModel, ABC):
             return
         event = EventItem(
             name=event_name,
-            kwargs=data,
             step=self.current_step,
             timestamp=datetime.now(),
+            content=data,
         )
         self._private_event_queue.put(event)
 

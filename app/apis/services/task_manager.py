@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Dict
+from typing import Any, Dict
 
 from app.agent.manus import Manus
 from app.apis.models.task import Task
@@ -23,7 +23,7 @@ class TaskManager:
         return task
 
     async def update_task_progress(
-        self, task_id: str, event_name: str, step: int, **kwargs
+        self, task_id: str, event_name: str, step: int, content: Any
     ):
         if task_id in self.tasks:
             task = self.tasks[task_id]
@@ -33,7 +33,7 @@ class TaskManager:
                     "type": "progress",
                     "event_name": event_name,
                     "step": step,
-                    "content": kwargs,
+                    "content": content,
                 }
             )
 
