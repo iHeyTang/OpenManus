@@ -2,13 +2,13 @@ import asyncio
 import json
 from typing import TYPE_CHECKING, Any, List
 
-from app.agent.base import BaseAgent, BaseAgentEvents
 from app.exceptions import TokenLimitExceeded
 from app.logger import logger
 from app.schema import TOOL_CHOICE_TYPE, AgentState, Message, ToolCall, ToolChoice
 from app.tool import CreateChatCompletion, Terminate, ToolCollection
 from app.tool.base import BaseTool
 from app.tool.mcp import MCPToolCallHost
+from app.utils.agent_event import ToolCallAgentEvents
 
 # Avoid circular import if BrowserAgent needs BrowserContextHelper
 if TYPE_CHECKING:
@@ -16,20 +16,6 @@ if TYPE_CHECKING:
 
 
 TOOL_CALL_REQUIRED = "Tool calls required but none provided"
-
-
-TOOL_CALL_THINK_AGENT_EVENTS_PREFIX = "agent:lifecycle:step:think:tool"
-TOOL_CALL_ACT_AGENT_EVENTS_PREFIX = "agent:lifecycle:step:act:tool"
-
-
-class ToolCallAgentEvents(BaseAgentEvents):
-    TOOL_SELECTED = f"{TOOL_CALL_THINK_AGENT_EVENTS_PREFIX}:selected"
-
-    TOOL_START = f"{TOOL_CALL_ACT_AGENT_EVENTS_PREFIX}:start"
-    TOOL_COMPLETE = f"{TOOL_CALL_ACT_AGENT_EVENTS_PREFIX}:complete"
-    TOOL_ERROR = f"{TOOL_CALL_ACT_AGENT_EVENTS_PREFIX}:error"
-    TOOL_EXECUTE_START = f"{TOOL_CALL_ACT_AGENT_EVENTS_PREFIX}:execute:start"
-    TOOL_EXECUTE_COMPLETE = f"{TOOL_CALL_ACT_AGENT_EVENTS_PREFIX}:execute:complete"
 
 
 class ToolCallContextHelper:

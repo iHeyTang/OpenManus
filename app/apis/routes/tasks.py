@@ -7,12 +7,12 @@ from typing import List, Optional, Union, cast
 from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from app.agent.base import BaseAgentEvents
 from app.agent.manus import Manus, McpToolConfig
 from app.apis.services.task_manager import task_manager
 from app.config import LLMSettings, config
 from app.llm import LLM
 from app.logger import logger
+from app.utils.agent_event import BaseAgentEvents
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 

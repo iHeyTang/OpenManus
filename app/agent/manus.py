@@ -3,7 +3,6 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.agent.base import BaseAgentEvents
 from app.agent.react import ReActAgent
 from app.context.browser import BrowserContextHelper
 from app.context.toolcall import ToolCallContextHelper
@@ -20,6 +19,7 @@ from app.tool.file_operators import FileOperator
 from app.tool.planning import PlanningTool
 from app.tool.str_replace_editor import StrReplaceEditor
 from app.tool.web_search import WebSearch
+from app.utils.agent_event import BaseAgentEvents
 
 SYSTEM_TOOLS: list[BaseTool] = [
     Bash(),
