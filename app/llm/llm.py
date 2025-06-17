@@ -18,9 +18,9 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from app.bedrock import BedrockClient, OpenAIResponse
 from app.config import LLMSettings, config
 from app.exceptions import TokenLimitExceeded
+from app.llm.bedrock import BedrockClient
 from app.logger import logger  # Assuming a logger is set up in your app
 from app.schema import (
     ROLE_VALUES,
@@ -53,7 +53,7 @@ class TokenCounter:
     HIGH_DETAIL_TARGET_SHORT_SIDE = 768
     TILE_SIZE = 512
 
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer: tiktoken.Encoding):
         self.tokenizer = tokenizer
 
     def count_text(self, text: str) -> int:
